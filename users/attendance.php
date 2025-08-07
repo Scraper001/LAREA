@@ -30,9 +30,26 @@ if ($_POST['action'] ?? '' === 'mark_attendance') {
     }
 
     if (bulkMarkAttendance($attendanceData, $selected_date, $_SESSION['user_id'] ?? null)) {
-        $success_message = "Attendance marked successfully!";
+        $success_message = "Attendance marked successfully! " . count($attendanceData) . " students updated.";
     } else {
         $error_message = "Failed to mark attendance. Please try again.";
+    }
+}
+
+// Handle bulk actions
+if ($_POST['action'] ?? '' === 'mark_all_present') {
+    if (markAllPresent($selected_date, $grade_level, $_SESSION['user_id'] ?? null)) {
+        $success_message = "All students marked as present successfully!";
+    } else {
+        $error_message = "Failed to mark all students as present.";
+    }
+}
+
+if ($_POST['action'] ?? '' === 'mark_all_absent') {
+    if (markAllAbsent($selected_date, $grade_level, $_SESSION['user_id'] ?? null)) {
+        $success_message = "All students marked as absent successfully!";
+    } else {
+        $error_message = "Failed to mark all students as absent.";
     }
 }
 
@@ -44,27 +61,51 @@ $gradeLevels = getGradeLevels();
 
 <style>
     .alert {
-        padding: 15px;
+        padding: 15px 20px;
         margin-bottom: 20px;
         border: 1px solid transparent;
-        border-radius: 4px;
+        border-radius: 8px;
         position: fixed;
         top: 20px;
         right: 20px;
         z-index: 1000;
-        min-width: 300px;
+        min-width: 350px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: slideIn 0.3s ease-out;
     }
 
     .alert-success {
-        color: #3c763d;
-        background-color: #dff0d8;
-        border-color: #d6e9c6;
+        color: #155724;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-color: #c3e6cb;
     }
 
     .alert-error {
-        color: #a94442;
-        background-color: #f2dede;
-        border-color: #ebccd1;
+        color: #721c24;
+        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+        border-color: #f1aeb5;
+    }
+
+    .alert::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        background: currentColor;
+        border-radius: 4px 0 0 4px;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
 
     .fade-out {
@@ -74,40 +115,85 @@ $gradeLevels = getGradeLevels();
     @keyframes fadeOut {
         from {
             opacity: 1;
+            transform: translateX(0);
         }
-
         to {
             opacity: 0;
+            transform: translateX(100%);
         }
     }
 
     .attendance-card {
         transition: all 0.3s ease;
+        border-radius: 12px;
     }
 
     .attendance-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
 
     .status-present {
-        background-color: #d4edda;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
         border-left: 4px solid #28a745;
     }
 
     .status-absent {
-        background-color: #f8d7da;
+        background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
         border-left: 4px solid #dc3545;
     }
 
     .status-late {
-        background-color: #fff3cd;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
         border-left: 4px solid #ffc107;
     }
 
     .status-excused {
-        background-color: #d1ecf1;
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
         border-left: 4px solid #17a2b8;
+    }
+
+    .quick-action-btn {
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    .quick-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .time-display {
+        font-family: 'Courier New', monospace;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stats-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+
+    .stats-card:hover {
+        transform: scale(1.05);
+    }
+
+    .hours-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .hours-worked {
+        color: #28a745;
+        font-weight: 600;
     }
 </style>
 
@@ -142,27 +228,32 @@ $gradeLevels = getGradeLevels();
                 </div>
                 <div class="text-right">
                     <div class="text-sm text-gray-500">Current Time</div>
-                    <div class="text-xl font-bold" id="currentTime"></div>
+                    <div class="text-xl font-bold time-display" id="currentTime"></div>
+                    <div class="text-xs text-gray-400" id="currentDate"></div>
                 </div>
             </div>
 
             <!-- Stats Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-green-100 p-4 rounded-lg text-center">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="stats-card bg-green-100 p-4 rounded-lg text-center">
                     <div class="text-2xl font-bold text-green-600"><?php echo $todayStats['present'] ?? 0; ?></div>
                     <div class="text-sm text-green-600">Present</div>
                 </div>
-                <div class="bg-red-100 p-4 rounded-lg text-center">
+                <div class="stats-card bg-red-100 p-4 rounded-lg text-center">
                     <div class="text-2xl font-bold text-red-600"><?php echo $todayStats['absent'] ?? 0; ?></div>
                     <div class="text-sm text-red-600">Absent</div>
                 </div>
-                <div class="bg-yellow-100 p-4 rounded-lg text-center">
+                <div class="stats-card bg-yellow-100 p-4 rounded-lg text-center">
                     <div class="text-2xl font-bold text-yellow-600"><?php echo $todayStats['late'] ?? 0; ?></div>
                     <div class="text-sm text-yellow-600">Late</div>
                 </div>
-                <div class="bg-blue-100 p-4 rounded-lg text-center">
+                <div class="stats-card bg-blue-100 p-4 rounded-lg text-center">
                     <div class="text-2xl font-bold text-blue-600"><?php echo $todayStats['excused'] ?? 0; ?></div>
                     <div class="text-sm text-blue-600">Excused</div>
+                </div>
+                <div class="stats-card bg-purple-100 p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-purple-600"><?php echo number_format($todayStats['avg_hours'] ?? 0, 1); ?>h</div>
+                    <div class="text-sm text-purple-600">Avg Hours</div>
                 </div>
             </div>
 
@@ -208,17 +299,29 @@ $gradeLevels = getGradeLevels();
             <div class="bg-white rounded-lg shadow-md p-4 mb-6">
                 <h3 class="text-lg font-semibold mb-3">Quick Actions</h3>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" onclick="markAllStatus('present')"
-                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                        Mark All Present
-                    </button>
-                    <button type="button" onclick="markAllStatus('absent')"
-                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                        Mark All Absent
-                    </button>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="mark_all_present">
+                        <button type="submit" 
+                            class="quick-action-btn bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                            onclick="return confirm('Mark all students as present?')">
+                            Mark All Present
+                        </button>
+                    </form>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="mark_all_absent">
+                        <button type="submit"
+                            class="quick-action-btn bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                            onclick="return confirm('Mark all students as absent?')">
+                            Mark All Absent
+                        </button>
+                    </form>
                     <button type="button" onclick="setCurrentTimeForAll()"
-                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        class="quick-action-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                         Set Current Time for Present
+                    </button>
+                    <button type="button" onclick="calculateAllHours()"
+                        class="quick-action-btn bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                        Calculate Hours
                     </button>
                 </div>
             </div>
@@ -233,7 +336,7 @@ $gradeLevels = getGradeLevels();
                                 <!-- Student Info -->
                                 <div class="lg:col-span-3 flex items-center space-x-3">
                                     <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white">
-                                        <img src="../<?php echo $student['photo_path'] ?: 'default-avatar.png'; ?>"
+                                        <img src="../<?php echo $student['photo_path'] ?: 'assets/images/default-avatar.png'; ?>"
                                             class="w-full h-full object-cover" alt="Student Photo">
                                     </div>
                                     <div>
@@ -241,6 +344,11 @@ $gradeLevels = getGradeLevels();
                                             <?php echo $student['Fname'] . ' ' . $student['Lname'] . ' ' . $student['Mname']; ?>
                                         </h3>
                                         <p class="text-sm text-gray-600">Grade <?php echo $student['GLevel']; ?></p>
+                                        <?php if ($student['hours_worked']): ?>
+                                            <span class="hours-badge hours-worked">
+                                                <?php echo number_format($student['hours_worked'], 1); ?>h worked
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
@@ -303,24 +411,33 @@ $gradeLevels = getGradeLevels();
 </main>
 
 <script>
-    // Update current time
+    // Update current time and date
     function updateTime() {
         const now = new Date();
         const timeString = now.toLocaleTimeString();
+        const dateString = now.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
         document.getElementById('currentTime').textContent = timeString;
+        document.getElementById('currentDate').textContent = dateString;
     }
 
     setInterval(updateTime, 1000);
     updateTime();
 
-    // Close alert function
+    // Enhanced alert handling
     function closeAlert(alertId) {
         const alert = document.getElementById(alertId);
-        alert.classList.add('fade-out');
-        setTimeout(() => alert.remove(), 500);
+        if (alert) {
+            alert.classList.add('fade-out');
+            setTimeout(() => alert.remove(), 500);
+        }
     }
 
-    // Auto-close alerts after 5 seconds
+    // Auto-close alerts after 5 seconds with progress indication
     setTimeout(() => {
         const alerts = document.querySelectorAll('.alert');
         alerts.forEach(alert => {
@@ -335,6 +452,7 @@ $gradeLevels = getGradeLevels();
         selects.forEach(select => {
             select.value = status;
             updateCardStatus(select);
+            updateTimeInputs(select);
         });
     }
 
@@ -347,8 +465,44 @@ $gradeLevels = getGradeLevels();
         statusSelects.forEach((select, index) => {
             if (select.value === 'present' || select.value === 'late') {
                 timeInputs[index].value = timeString;
+                calculateHours(timeInputs[index]);
             }
         });
+    }
+
+    function calculateAllHours() {
+        const timeInputs = document.querySelectorAll('.time-in-input');
+        timeInputs.forEach(input => {
+            if (input.value) {
+                calculateHours(input);
+            }
+        });
+        showAlert('Hours calculated for all students with time entries!', 'success');
+    }
+
+    function calculateHours(timeInInput) {
+        const row = timeInInput.closest('.attendance-card');
+        const timeOutInput = row.querySelector('input[name*="[time_out]"]');
+        
+        if (timeInInput.value && timeOutInput.value) {
+            const timeIn = new Date('2000-01-01 ' + timeInInput.value);
+            const timeOut = new Date('2000-01-01 ' + timeOutInput.value);
+            
+            if (timeOut > timeIn) {
+                const diffMs = timeOut - timeIn;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                const hoursWorked = Math.max(0, diffHours - 1); // Subtract 1 hour for break
+                
+                // Display calculated hours
+                let hoursDisplay = row.querySelector('.hours-display');
+                if (!hoursDisplay) {
+                    hoursDisplay = document.createElement('span');
+                    hoursDisplay.className = 'hours-display hours-badge hours-worked';
+                    row.querySelector('.lg\\:col-span-3 > div:last-child').appendChild(hoursDisplay);
+                }
+                hoursDisplay.textContent = hoursWorked.toFixed(1) + 'h worked';
+            }
+        }
     }
 
     // Update card status visual
@@ -362,32 +516,96 @@ $gradeLevels = getGradeLevels();
         card.classList.add('status-' + status);
     }
 
-    // Add event listeners to status selects
+    function updateTimeInputs(selectElement) {
+        const card = selectElement.closest('.attendance-card');
+        const timeInInput = card.querySelector('input[name*="[time_in]"]');
+        const status = selectElement.value;
+
+        // Auto-fill time in for present/late status
+        if ((status === 'present' || status === 'late') && !timeInInput.value) {
+            const now = new Date();
+            timeInInput.value = now.toTimeString().slice(0, 5);
+        }
+        
+        // Clear time inputs for absent/excused
+        if (status === 'absent' || status === 'excused') {
+            timeInInput.value = '';
+            const timeOutInput = card.querySelector('input[name*="[time_out]"]');
+            if (timeOutInput) timeOutInput.value = '';
+        }
+    }
+
+    function showAlert(message, type = 'success') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button onclick="closeAlert('${alertDiv.id}')" 
+                style="float: right; background: none; border: none; font-size: 18px;">&times;</button>
+        `;
+        alertDiv.id = 'alert-' + Date.now();
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.add('fade-out');
+                setTimeout(() => alertDiv.remove(), 500);
+            }
+        }, 5000);
+    }
+
+    // Add event listeners
     document.addEventListener('DOMContentLoaded', function () {
         const statusSelects = document.querySelectorAll('.status-select');
         statusSelects.forEach(select => {
             select.addEventListener('change', function () {
                 updateCardStatus(this);
+                updateTimeInputs(this);
+            });
+        });
+
+        // Add time change listeners for automatic hour calculation
+        const timeInputs = document.querySelectorAll('input[type="time"]');
+        timeInputs.forEach(input => {
+            input.addEventListener('change', function () {
+                calculateHours(this);
             });
         });
     });
 
-    // Form validation
+    // Enhanced form validation
     document.getElementById('attendanceForm').addEventListener('submit', function (e) {
         const statusSelects = document.querySelectorAll('.status-select');
         let hasSelection = false;
+        let presentCount = 0;
 
         statusSelects.forEach(select => {
             if (select.value && select.value !== 'absent') {
                 hasSelection = true;
+                if (select.value === 'present' || select.value === 'late') {
+                    presentCount++;
+                }
             }
         });
 
         if (!hasSelection) {
             if (!confirm('No attendance has been marked. Are you sure you want to continue?')) {
                 e.preventDefault();
+                return;
             }
         }
+
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Saving...';
+        submitBtn.disabled = true;
+
+        // Re-enable button after a delay (in case of errors)
+        setTimeout(() => {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }, 10000);
     });
 </script>
 
