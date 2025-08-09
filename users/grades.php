@@ -1,13 +1,13 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
-
+include "../connection/conn.php";
 include "functions/grade_functions.php";
 
 $conn = conn();
 
-// Get all grades for display
-$grades = getAllGrades(50);
-$students = getAllStudents();
+// Get all students with their grade summaries
+$students = getAllStudentsWithSummaries();
+$statistics = getGradeStatistics();
 ?>
 
 <?php include "../includes/header.php" ?>
@@ -19,18 +19,18 @@ $students = getAllStudents();
     <div class="px-4 pb-20">
         <!-- Header Section -->
         <div class="mb-4">
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">GRADE MANAGEMENT</h1>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">STUDENT GRADE DASHBOARD</h1>
 
-            <!-- Quick Stats Cards -->
+            <!-- Overall Statistics -->
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                     <div class="flex items-center">
                         <div class="bg-blue-100 p-2 rounded-lg">
-                            <i class="fa-solid fa-star text-blue-600 text-sm"></i>
+                            <i class="fa-solid fa-users text-blue-600 text-sm"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-xs text-gray-500">Total Grades</p>
-                            <p class="text-lg font-bold text-gray-900"><?= count($grades) ?></p>
+                            <p class="text-xs text-gray-500">Total Students</p>
+                            <p class="text-lg font-bold text-gray-900"><?= count($students) ?></p>
                         </div>
                     </div>
                 </div>
@@ -38,37 +38,14 @@ $students = getAllStudents();
                 <div class="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                     <div class="flex items-center">
                         <div class="bg-green-100 p-2 rounded-lg">
-                            <i class="fa-solid fa-graduation-cap text-green-600 text-sm"></i>
+                            <i class="fa-solid fa-chart-line text-green-600 text-sm"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-xs text-gray-500">Students</p>
-                            <p class="text-lg font-bold text-gray-900"><?= count($students) ?></p>
+                            <p class="text-xs text-gray-500">Avg. Performance</p>
+                            <p class="text-lg font-bold text-gray-900"><?= $statistics['avg_percentage'] ?? 0 ?>%</p>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Action Buttons Row -->
-            <div class="flex gap-2 mb-4">
-                <!-- Add Grade Button -->
-                <button id="addGradeButton"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    <i class="fa-solid fa-plus mr-2"></i>
-                    Add Grade
-                </button>
-
-                <!-- Add Anecdotal Record Button -->
-                <button id="addAnecdotalButton"
-                    class="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    <i class="fa-solid fa-clipboard mr-2"></i>
-                    Add Record
-                </button>
-
-                <!-- Filter Button -->
-                <button id="filterButton"
-                    class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                    <i class="fa-solid fa-filter"></i>
-                </button>
             </div>
 
             <!-- Search Bar -->
@@ -76,103 +53,181 @@ $students = getAllStudents();
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <i class="fa-solid fa-search text-gray-400"></i>
                 </div>
-                <input type="text" id="searchGrades"
+                <input type="text" id="searchStudents"
                     class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Search grades, students, or subjects...">
+                    placeholder="Search students by name, LRN, or grade level...">
             </div>
         </div>
 
-        <!-- Grades List -->
-        <div class="space-y-3 h-[500px] overflow-y-auto" id="gradesList">
-            <?php if (!empty($grades)) { ?>
-                <?php foreach ($grades as $grade) { ?>
-                    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm grade-card">
-                        <!-- Student Info Header -->
+        <!-- Student Cards Grid -->
+        <div class="space-y-4" id="studentsGrid">
+            <?php if (!empty($students)) { ?>
+                <?php foreach ($students as $student) { ?>
+                    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm student-card cursor-pointer hover:shadow-md transition-shadow duration-200"
+                        onclick="openStudentGradingSheet(<?= $student['id'] ?>, '<?= htmlspecialchars($student['Fname'] . ' ' . $student['Lname']) ?>')">
+
+                        <!-- Student Header -->
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <i class="fa-solid fa-user text-blue-600"></i>
+                                <div
+                                    class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white font-bold text-lg">
+                                        <?= strtoupper(substr($student['Fname'], 0, 1) . substr($student['Lname'], 0, 1)) ?>
+                                    </span>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-semibold text-gray-900">
-                                        <?= htmlspecialchars($grade['Fname'] . ' ' . $grade['Lname']) ?>
+                                    <h3 class="text-lg font-semibold text-gray-900">
+                                        <?= htmlspecialchars($student['Fname'] . ' ' . $student['Lname']) ?>
                                     </h3>
-                                    <p class="text-xs text-gray-500">
-                                        <?= htmlspecialchars($grade['GLevel']) ?> - LRN: <?= htmlspecialchars($grade['LRN']) ?>
+                                    <p class="text-sm text-gray-500">
+                                        LRN: <?= htmlspecialchars($student['LRN']) ?> •
+                                        <?= htmlspecialchars($student['GLevel']) ?>
                                     </p>
                                 </div>
                             </div>
 
-                            <!-- Grade Score -->
-                            <div class="text-right">
-                                <div class="text-lg font-bold text-gray-900">
-                                    <?= number_format(($grade['grade_value'] / $grade['max_points']) * 100, 1) ?>%
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    <?= $grade['grade_value'] ?>/<?= $grade['max_points'] ?>
-                                </div>
+                            <!-- Quick Actions -->
+                            <div class="flex space-x-2">
+                                <button
+                                    onclick="event.stopPropagation(); addQuickGrade(<?= $student['id'] ?>, '<?= htmlspecialchars($student['Fname'] . ' ' . $student['Lname']) ?>')"
+                                    class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); exportStudentGrades(<?= $student['id'] ?>)"
+                                    class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 transition-colors">
+                                    <i class="fa-solid fa-download"></i>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Assessment Details -->
-                        <div class="mb-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center space-x-2">
-                                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                                        <?= htmlspecialchars($grade['subject']) ?>
-                                    </span>
-                                    <span class="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded">
-                                        <?= htmlspecialchars($grade['assessment_type']) ?>
-                                    </span>
-                                </div>
-                                <span class="text-xs text-gray-500">
-                                    <?= htmlspecialchars($grade['grading_period']) ?>
+                        <!-- Grade Summary Stats -->
+                        <div class="grid grid-cols-4 gap-3 mb-3">
+                            <div class="text-center">
+                                <p class="text-xs text-gray-500">Overall</p>
+                                <p class="text-lg font-bold text-gray-900">
+                                    <?= round($student['overall_average'] ?? 0, 1) ?>%
+                                </p>
+                                <span
+                                    class="text-xs px-2 py-1 rounded-full 
+                                    <?= ($student['overall_average'] ?? 0) >= 60 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
+                                    <?= ($student['overall_average'] ?? 0) >= 60 ? 'Passing' : 'Needs Help' ?>
                                 </span>
                             </div>
 
-                            <h4 class="text-sm font-medium text-gray-900 mb-1">
-                                <?= htmlspecialchars($grade['assessment_name']) ?>
-                            </h4>
+                            <div class="text-center">
+                                <p class="text-xs text-gray-500">Total Grades</p>
+                                <p class="text-lg font-bold text-blue-600"><?= $student['total_grades'] ?? 0 ?></p>
+                            </div>
 
-                            <?php if (!empty($grade['remarks'])) { ?>
-                                <p class="text-xs text-gray-600">
-                                    <?= htmlspecialchars($grade['remarks']) ?>
-                                </p>
-                            <?php } ?>
+                            <div class="text-center">
+                                <p class="text-xs text-gray-500">Passed</p>
+                                <p class="text-lg font-bold text-green-600"><?= $student['status_passed'] ?? 0 ?></p>
+                            </div>
+
+                            <div class="text-center">
+                                <p class="text-xs text-gray-500">Failed</p>
+                                <p class="text-lg font-bold text-red-600"><?= $student['status_failed'] ?? 0 ?></p>
+                            </div>
                         </div>
 
-                        <!-- Date and Actions -->
-                        <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                            <span class="text-xs text-gray-500">
-                                <i class="fa-solid fa-clock mr-1"></i>
-                                <?= date('M j, Y', strtotime($grade['date_recorded'])) ?>
-                            </span>
-
-                            <div class="flex space-x-2">
-                                <button onclick="editGrade(<?= htmlspecialchars(json_encode($grade)) ?>)"
-                                    class="text-blue-600 hover:text-blue-800 text-sm">
-                                    <i class="fa-solid fa-edit"></i>
-                                </button>
-                                <button
-                                    onclick="deleteGrade(<?= $grade['grade_id'] ?>, '<?= htmlspecialchars($grade['assessment_name']) ?>')"
-                                    class="text-red-600 hover:text-red-800 text-sm">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                        <!-- Subject Performance Preview -->
+                        <?php if (!empty($student['subject_averages'])) { ?>
+                            <div class="border-t border-gray-100 pt-3">
+                                <p class="text-xs text-gray-500 mb-2">Subject Performance</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <?php foreach (array_slice($student['subject_averages'], 0, 3) as $subject => $average) { ?>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs text-gray-600 truncate"><?= htmlspecialchars($subject) ?></span>
+                                                <span
+                                                    class="text-xs font-medium <?= $average >= 60 ? 'text-green-600' : 'text-red-600' ?>">
+                                                    <?= round($average, 1) ?>%
+                                                </span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                                <div class="h-1 rounded-full <?= $average >= 60 ? 'bg-green-500' : 'bg-red-500' ?>"
+                                                    style="width: <?= min($average, 100) ?>%"></div>
+                                            </div>
+                                        </div>
+                                    <?php } ?>
+                                    <?php if (count($student['subject_averages']) > 3) { ?>
+                                        <span class="text-xs text-gray-400">+<?= count($student['subject_averages']) - 3 ?> more</span>
+                                    <?php } ?>
+                                </div>
                             </div>
+                        <?php } ?>
+
+                        <!-- Recent Activity -->
+                        <?php if (!empty($student['recent_grade'])) { ?>
+                            <div class="border-t border-gray-100 pt-3 mt-3">
+                                <p class="text-xs text-gray-500 mb-1">Latest Grade</p>
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        class="text-sm text-gray-700"><?= htmlspecialchars($student['recent_grade']['assessment_name']) ?></span>
+                                    <div class="flex items-center space-x-2">
+                                        <span
+                                            class="text-sm font-medium"><?= round($student['recent_grade']['percentage'], 1) ?>%</span>
+                                        <span
+                                            class="text-xs px-2 py-1 rounded-full 
+                                            <?= $student['recent_grade']['grade_status'] === 'Passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
+                                            <?= $student['recent_grade']['grade_status'] ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php } ?>
+
+                        <!-- Click to View Hint -->
+                        <div class="border-t border-gray-100 pt-3 mt-3 text-center">
+                            <p class="text-xs text-gray-400">
+                                <i class="fa-solid fa-mouse-pointer mr-1"></i>
+                                Click to view full grading sheet
+                            </p>
                         </div>
                     </div>
                 <?php } ?>
             <?php } else { ?>
                 <div class="bg-white rounded-lg border border-gray-200 p-8 shadow-sm text-center">
-                    <i class="fa-solid fa-chart-line text-4xl text-gray-300 mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Grades Yet</h3>
-                    <p class="text-gray-500 mb-4">Start adding grades to track student performance.</p>
-                    <button onclick="document.getElementById('addGradeButton').click()"
+                    <i class="fa-solid fa-user-graduate text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Students Found</h3>
+                    <p class="text-gray-500 mb-4">Add students to start tracking their grades.</p>
+                    <a href="student_management.php"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
-                        <i class="fa-solid fa-plus mr-2"></i>Add First Grade
-                    </button>
+                        <i class="fa-solid fa-plus mr-2"></i>Add Students
+                    </a>
                 </div>
             <?php } ?>
+        </div>
+    </div>
+
+    <!-- Student Grading Sheet Modal -->
+    <div id="gradingSheetModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-4 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-900" id="modalStudentName">Student Grading Sheet</h3>
+                    <p class="text-sm text-gray-500" id="modalStudentInfo">Loading...</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="addGradeToSheet()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium">
+                        <i class="fa-solid fa-plus mr-1"></i>Add Grade
+                    </button>
+                    <button id="closeGradingSheetModal" type="button" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grading Sheet Content -->
+            <div id="gradingSheetContent" class="max-h-96 overflow-y-auto">
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-2 text-gray-600">Loading grading sheet...</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -181,7 +236,7 @@ $students = getAllStudents();
         <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Add New Grade</h3>
+                <h3 class="text-lg font-semibold text-gray-900" id="addGradeModalTitle">Add New Grade</h3>
                 <button id="closeAddGradeModal" type="button" class="text-gray-400 hover:text-gray-600">
                     <i class="fa-solid fa-times text-xl"></i>
                 </button>
@@ -189,23 +244,9 @@ $students = getAllStudents();
 
             <!-- Modal Form -->
             <form id="addGradeForm" class="space-y-4">
-                <!-- Student Selection -->
-                <div>
-                    <label for="gradeStudent" class="block text-sm font-medium text-gray-700 mb-1">
-                        Student <span class="text-red-500">*</span>
-                    </label>
-                    <select id="gradeStudent" name="student_id" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Student</option>
-                        <?php foreach ($students as $student) { ?>
-                            <option value="<?= $student['id'] ?>" data-lrn="<?= $student['LRN'] ?>">
-                                <?= htmlspecialchars($student['Fname'] . ' ' . $student['Lname']) ?> -
-                                <?= $student['GLevel'] ?>
-                            </option>
-                        <?php } ?>
-                    </select>
-                    <input type="hidden" id="gradeStudentLRN" name="lrn">
-                </div>
+                <input type="hidden" id="modalStudentId" name="student_id">
+                <input type="hidden" id="modalStudentLRN" name="lrn">
+                <input type="hidden" id="editGradeId" name="grade_id">
 
                 <!-- Subject -->
                 <div>
@@ -276,6 +317,18 @@ $students = getAllStudents();
                     </div>
                 </div>
 
+                <!-- Grade Preview -->
+                <div id="gradePreview" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div class="text-sm">
+                        <span class="text-gray-600">Percentage: </span>
+                        <span id="previewPercentage" class="font-semibold text-gray-900">0%</span>
+                        <span class="ml-3 text-gray-600">Status: </span>
+                        <span id="previewStatus" class="font-semibold"></span>
+                        <span class="ml-3 text-gray-600">Category: </span>
+                        <span id="previewCategory" class="font-semibold"></span>
+                    </div>
+                </div>
+
                 <!-- Grading Period -->
                 <div>
                     <label for="gradingPeriod" class="block text-sm font-medium text-gray-700 mb-1">
@@ -307,7 +360,7 @@ $students = getAllStudents();
                         class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
                         Cancel
                     </button>
-                    <button type="submit"
+                    <button type="submit" id="submitGradeBtn"
                         class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
                         <i class="fa-solid fa-plus mr-1"></i>
                         Add Grade
@@ -317,176 +370,364 @@ $students = getAllStudents();
         </div>
     </div>
 
-    <!-- Add Anecdotal Record Modal -->
-    <div id="addAnecdotalModal"
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Add Anecdotal Record</h3>
-                <button id="closeAddAnecdotalModal" type="button" class="text-gray-400 hover:text-gray-600">
-                    <i class="fa-solid fa-times text-xl"></i>
-                </button>
-            </div>
-
-            <!-- Modal Form -->
-            <form id="addAnecdotalForm" class="space-y-4">
-                <!-- Student Selection -->
-                <div>
-                    <label for="anecdotalStudent" class="block text-sm font-medium text-gray-700 mb-1">
-                        Student <span class="text-red-500">*</span>
-                    </label>
-                    <select id="anecdotalStudent" name="student_id" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Student</option>
-                        <?php foreach ($students as $student) { ?>
-                            <option value="<?= $student['id'] ?>" data-lrn="<?= $student['LRN'] ?>">
-                                <?= htmlspecialchars($student['Fname'] . ' ' . $student['Lname']) ?> -
-                                <?= $student['GLevel'] ?>
-                            </option>
-                        <?php } ?>
-                    </select>
-                    <input type="hidden" id="anecdotalStudentLRN" name="lrn">
-                </div>
-
-                <!-- Record Type -->
-                <div>
-                    <label for="anecdotalType" class="block text-sm font-medium text-gray-700 mb-1">
-                        Record Type <span class="text-red-500">*</span>
-                    </label>
-                    <select id="anecdotalType" name="record_type" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="Behavioral">Behavioral</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Social">Social</option>
-                        <option value="Achievement">Achievement</option>
-                        <option value="Concern">Concern</option>
-                    </select>
-                </div>
-
-                <!-- Observation Title -->
-                <div>
-                    <label for="anecdotalTitle" class="block text-sm font-medium text-gray-700 mb-1">
-                        Observation Title <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="anecdotalTitle" name="observation_title" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Brief title describing the observation">
-                </div>
-
-                <!-- Observation Details -->
-                <div>
-                    <label for="anecdotalDetails" class="block text-sm font-medium text-gray-700 mb-1">
-                        Observation Details <span class="text-red-500">*</span>
-                    </label>
-                    <textarea id="anecdotalDetails" name="observation_details" required rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Detailed description of the observation..."></textarea>
-                </div>
-
-                <!-- Severity Level -->
-                <div>
-                    <label for="anecdotalSeverity" class="block text-sm font-medium text-gray-700 mb-1">
-                        Severity Level
-                    </label>
-                    <select id="anecdotalSeverity" name="severity_level"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                        <option value="Critical">Critical</option>
-                    </select>
-                </div>
-
-                <!-- Follow-up Required -->
-                <div>
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" id="anecdotalFollowUp" name="follow_up_required" value="1"
-                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                        <span class="text-sm font-medium text-gray-700">Follow-up required</span>
-                    </label>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="flex space-x-3 pt-4">
-                    <button type="button" id="cancelAddAnecdotalModal"
-                        class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                        class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500">
-                        <i class="fa-solid fa-plus mr-1"></i>
-                        Add Record
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
 </main>
 
 <script>
-    // Modal elements
-    const addGradeModal = document.getElementById('addGradeModal');
-    const addAnecdotalModal = document.getElementById('addAnecdotalModal');
-    const addGradeButton = document.getElementById('addGradeButton');
-    const addAnecdotalButton = document.getElementById('addAnecdotalButton');
+    let currentStudentId = null;
+    let currentStudentName = '';
 
-    // Modal control functions
-    function openAddGradeModal() {
-        addGradeModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+    // Grade calculation function (60% passing)
+    function calculateGradePreview() {
+        const gradeValue = parseFloat(document.getElementById('gradeValue').value) || 0;
+        const maxPoints = parseFloat(document.getElementById('gradeMaxPoints').value) || 100;
+
+        if (gradeValue && maxPoints) {
+            const percentage = (gradeValue / maxPoints) * 100;
+            const status = percentage >= 60 ? 'Passed' : 'Failed';
+
+            let category = 'Failed';
+            if (percentage >= 95) category = 'Outstanding';
+            else if (percentage >= 90) category = 'Very Satisfactory';
+            else if (percentage >= 85) category = 'Satisfactory';
+            else if (percentage >= 80) category = 'Fairly Satisfactory';
+            else if (percentage >= 75) category = 'Did Not Meet Expectations';
+            else if (percentage >= 60) category = 'Beginning';
+
+            document.getElementById('previewPercentage').textContent = percentage.toFixed(1) + '%';
+            document.getElementById('previewStatus').textContent = status;
+            document.getElementById('previewStatus').className = `font-semibold ${status === 'Passed' ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('previewCategory').textContent = category;
+
+            // Category colors
+            const categoryColors = {
+                'Outstanding': 'text-purple-600',
+                'Very Satisfactory': 'text-indigo-600',
+                'Satisfactory': 'text-blue-600',
+                'Fairly Satisfactory': 'text-green-600',
+                'Did Not Meet Expectations': 'text-yellow-600',
+                'Beginning': 'text-orange-600',
+                'Failed': 'text-red-600'
+            };
+            document.getElementById('previewCategory').className = `font-semibold ${categoryColors[category]}`;
+
+            document.getElementById('gradePreview').classList.remove('hidden');
+        } else {
+            document.getElementById('gradePreview').classList.add('hidden');
+        }
     }
 
-    function closeAddGradeModal() {
-        addGradeModal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
+    // Add event listeners for grade calculation
+    document.getElementById('gradeValue').addEventListener('input', calculateGradePreview);
+    document.getElementById('gradeMaxPoints').addEventListener('input', calculateGradePreview);
+
+    // Search functionality
+    document.getElementById('searchStudents').addEventListener('input', function () {
+        const searchTerm = this.value.toLowerCase();
+        const studentCards = document.querySelectorAll('.student-card');
+
+        studentCards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+
+    // Open student grading sheet
+    function openStudentGradingSheet(studentId, studentName) {
+        currentStudentId = studentId;
+        currentStudentName = studentName;
+        document.getElementById('modalStudentName').textContent = studentName + ' - Grading Sheet';
+        document.getElementById('modalStudentInfo').textContent = 'Loading student information...';
+
+        // Show modal
+        document.getElementById('gradingSheetModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        // Load grading sheet
+        loadGradingSheet(studentId);
+    }
+
+    // Load grading sheet data
+    function loadGradingSheet(studentId) {
+        fetch('functions/grade_functions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=get_grading_sheet&student_id=${studentId}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderGradingSheet(data.data);
+                } else {
+                    document.getElementById('gradingSheetContent').innerHTML =
+                        '<div class="text-center py-8 text-red-600">Failed to load grading sheet</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('gradingSheetContent').innerHTML =
+                    '<div class="text-center py-8 text-red-600">Error loading grading sheet</div>';
+            });
+    }
+
+    // Render grading sheet as structured table
+    function renderGradingSheet(gradingData) {
+        let html = '';
+
+        if (Object.keys(gradingData).length === 0) {
+            html = `
+                <div class="text-center py-8">
+                    <i class="fa-solid fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Grades Yet</h3>
+                    <p class="text-gray-500 mb-4">Start adding grades for this student.</p>
+                    <button onclick="addGradeToSheet()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                        <i class="fa-solid fa-plus mr-2"></i>Add First Grade
+                    </button>
+                </div>
+            `;
+        } else {
+            // Group by grading period
+            Object.keys(gradingData).forEach(period => {
+                html += `
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+                            ${period}
+                        </h4>
+                        <div class="grid gap-4">
+                `;
+
+                // Group by subject within each period
+                Object.keys(gradingData[period]).forEach(subject => {
+                    const grades = gradingData[period][subject];
+                    const subjectAverage = grades.reduce((sum, grade) => sum + parseFloat(grade.percentage), 0) / grades.length;
+
+                    html += `
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="font-medium text-gray-900">${subject}</h5>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-600">Average:</span>
+                                    <span class="font-semibold ${subjectAverage >= 60 ? 'text-green-600' : 'text-red-600'}">
+                                        ${subjectAverage.toFixed(1)}%
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full ${subjectAverage >= 60 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                        ${subjectAverage >= 60 ? 'Passing' : 'Failing'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-200">
+                                            <th class="text-left py-2 px-3 font-medium text-gray-700">Assessment</th>
+                                            <th class="text-center py-2 px-3 font-medium text-gray-700">Type</th>
+                                            <th class="text-center py-2 px-3 font-medium text-gray-700">Score</th>
+                                            <th class="text-center py-2 px-3 font-medium text-gray-700">Percentage</th>
+                                            <th class="text-center py-2 px-3 font-medium text-gray-700">Status</th>
+                                            <th class="text-center py-2 px-3 font-medium text-gray-700">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+
+                    grades.forEach(grade => {
+                        html += `
+                            <tr class="border-b border-gray-100 hover:bg-white">
+                                <td class="py-2 px-3">
+                                    <div>
+                                        <div class="font-medium text-gray-900">${grade.assessment_name}</div>
+                                        ${grade.remarks ? `<div class="text-xs text-gray-500">${grade.remarks}</div>` : ''}
+                                    </div>
+                                                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${grade.assessment_type}</span>
+                                </td>
+                                <td class="py-2 px-3 text-center font-medium">${grade.grade_value}/${grade.max_points}</td>
+                                <td class="py-2 px-3 text-center">
+                                    <span class="font-semibold ${parseFloat(grade.percentage) >= 60 ? 'text-green-600' : 'text-red-600'}">
+                                        ${parseFloat(grade.percentage).toFixed(1)}%
+                                    </span>
+                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    <span class="text-xs px-2 py-1 rounded-full ${grade.grade_status === 'Passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                        ${grade.grade_status}
+                                    </span>
+                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <button onclick="editGradeInSheet(${grade.grade_id})" class="text-blue-600 hover:text-blue-800 p-1">
+                                            <i class="fa-solid fa-edit text-xs"></i>
+                                        </button>
+                                        <button onclick="deleteGradeInSheet(${grade.grade_id}, '${grade.assessment_name}')" class="text-red-600 hover:text-red-800 p-1">
+                                            <i class="fa-solid fa-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('gradingSheetContent').innerHTML = html;
+    }
+
+    // Add grade to sheet function
+    function addGradeToSheet() {
+        if (!currentStudentId) {
+            showAlert('error', 'Error', 'No student selected');
+            return;
+        }
+
+        // Reset form and set student data
         document.getElementById('addGradeForm').reset();
-    }
+        document.getElementById('modalStudentId').value = currentStudentId;
+        document.getElementById('editGradeId').value = '';
+        document.getElementById('addGradeModalTitle').textContent = `Add Grade for ${currentStudentName}`;
+        document.getElementById('submitGradeBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i>Add Grade';
+        document.getElementById('gradePreview').classList.add('hidden');
 
-    function openAddAnecdotalModal() {
-        addAnecdotalModal.classList.remove('hidden');
+        // Get student LRN
+        fetch('functions/grade_functions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=get_student_summary&student_id=${currentStudentId}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    document.getElementById('modalStudentLRN').value = data.data.LRN;
+                }
+            });
+
+        // Show add grade modal
+        document.getElementById('addGradeModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
-    function closeAddAnecdotalModal() {
-        addAnecdotalModal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-        document.getElementById('addAnecdotalForm').reset();
+    // Quick add grade function
+    function addQuickGrade(studentId, studentName) {
+        currentStudentId = studentId;
+        currentStudentName = studentName;
+        addGradeToSheet();
     }
 
-    // Event listeners
-    addGradeButton.addEventListener('click', openAddGradeModal);
-    addAnecdotalButton.addEventListener('click', openAddAnecdotalModal);
+    // Edit grade in sheet
+    function editGradeInSheet(gradeId) {
+        // Get grade data
+        fetch('functions/grade_functions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=get_grade_by_id&grade_id=${gradeId}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const grade = data.data;
 
-    document.getElementById('closeAddGradeModal').addEventListener('click', closeAddGradeModal);
-    document.getElementById('cancelAddGradeModal').addEventListener('click', closeAddGradeModal);
-    document.getElementById('closeAddAnecdotalModal').addEventListener('click', closeAddAnecdotalModal);
-    document.getElementById('cancelAddAnecdotalModal').addEventListener('click', closeAddAnecdotalModal);
+                    // Fill form with existing data
+                    document.getElementById('modalStudentId').value = grade.student_id;
+                    document.getElementById('modalStudentLRN').value = grade.LRN;
+                    document.getElementById('editGradeId').value = grade.grade_id;
+                    document.getElementById('gradeSubject').value = grade.subject;
+                    document.getElementById('gradeAssessmentType').value = grade.assessment_type;
+                    document.getElementById('gradeAssessmentName').value = grade.assessment_name;
+                    document.getElementById('gradeValue').value = grade.grade_value;
+                    document.getElementById('gradeMaxPoints').value = grade.max_points;
+                    document.getElementById('gradingPeriod').value = grade.grading_period;
+                    document.getElementById('gradeRemarks').value = grade.remarks || '';
 
-    // Handle student selection for grades
-    document.getElementById('gradeStudent').addEventListener('change', function () {
-        const selectedOption = this.options[this.selectedIndex];
-        const lrn = selectedOption.getAttribute('data-lrn');
-        document.getElementById('gradeStudentLRN').value = lrn || '';
-    });
+                    // Update modal title and button
+                    document.getElementById('addGradeModalTitle').textContent = `Edit Grade for ${grade.Fname} ${grade.Lname}`;
+                    document.getElementById('submitGradeBtn').innerHTML = '<i class="fa-solid fa-save mr-1"></i>Update Grade';
 
-    // Handle student selection for anecdotal records
-    document.getElementById('anecdotalStudent').addEventListener('change', function () {
-        const selectedOption = this.options[this.selectedIndex];
-        const lrn = selectedOption.getAttribute('data-lrn');
-        document.getElementById('anecdotalStudentLRN').value = lrn || '';
-    });
+                    // Calculate preview
+                    calculateGradePreview();
 
-    // Form submission handlers
+                    // Show modal
+                    document.getElementById('addGradeModal').classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('error', 'Error', 'Failed to load grade data');
+            });
+    }
+
+    // Delete grade in sheet
+    function deleteGradeInSheet(gradeId, assessmentName) {
+        if (confirm(`Are you sure you want to delete "${assessmentName}"?`)) {
+            fetch('functions/grade_functions.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=delete_grade&grade_id=${gradeId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', 'Success!', data.message);
+                        // Reload grading sheet
+                        loadGradingSheet(currentStudentId);
+                        // Reload page to update student cards
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('error', 'Error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('error', 'Connection Error', 'Unable to connect to server.');
+                });
+        }
+    }
+
+    // Export student grades
+    function exportStudentGrades(studentId) {
+        window.open(`functions/grade_functions.php?action=export_csv&student_id=${studentId}`, '_blank');
+    }
+
+    // Form submission handler
     document.getElementById('addGradeForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        const formData = new FormData(this);
-        formData.append('action', 'add_grade');
 
-        const submitButton = this.querySelector('button[type="submit"]');
+        const formData = new FormData(this);
+        const isEdit = document.getElementById('editGradeId').value;
+
+        if (isEdit) {
+            formData.append('action', 'update_grade');
+        } else {
+            formData.append('action', 'add_grade');
+        }
+
+        const submitButton = document.getElementById('submitGradeBtn');
         const originalText = submitButton.innerHTML;
-        submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Adding...';
+        submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> ' + (isEdit ? 'Updating...' : 'Adding...');
         submitButton.disabled = true;
 
         fetch('functions/grade_functions.php', {
@@ -496,8 +737,15 @@ $students = getAllStudents();
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert('success', 'Success!', data.message);
+                    showAlert('success', 'Success!', data.message + (data.percentage ? ` (${data.percentage}% - ${data.status})` : ''));
                     closeAddGradeModal();
+
+                    // If grading sheet is open, reload it
+                    if (currentStudentId && !document.getElementById('gradingSheetModal').classList.contains('hidden')) {
+                        loadGradingSheet(currentStudentId);
+                    }
+
+                    // Reload page to update student cards
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showAlert('error', 'Error', data.message);
@@ -513,39 +761,25 @@ $students = getAllStudents();
             });
     });
 
-    document.getElementById('addAnecdotalForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        formData.append('action', 'add_anecdotal');
+    // Modal close functions
+    function closeAddGradeModal() {
+        document.getElementById('addGradeModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        document.getElementById('addGradeForm').reset();
+        document.getElementById('gradePreview').classList.add('hidden');
+    }
 
-        const submitButton = this.querySelector('button[type="submit"]');
-        const originalText = submitButton.innerHTML;
-        submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Adding...';
-        submitButton.disabled = true;
-
-        fetch('functions/grade_functions.php', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert('success', 'Success!', data.message);
-                    closeAddAnecdotalModal();
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('error', 'Error', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showAlert('error', 'Connection Error', 'Unable to connect to server.');
-            })
-            .finally(() => {
-                submitButton.innerHTML = originalText;
-                submitButton.disabled = false;
-            });
+    // Close grading sheet modal
+    document.getElementById('closeGradingSheetModal').addEventListener('click', function () {
+        document.getElementById('gradingSheetModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        currentStudentId = null;
+        currentStudentName = '';
     });
+
+    // Close add grade modal
+    document.getElementById('closeAddGradeModal').addEventListener('click', closeAddGradeModal);
+    document.getElementById('cancelAddGradeModal').addEventListener('click', closeAddGradeModal);
 
     // Alert function
     function showAlert(type, title, message) {
@@ -578,77 +812,60 @@ $students = getAllStudents();
         setTimeout(() => alertDiv.remove(), 5000);
     }
 
-    // Edit and delete functions (placeholders)
-    function editGrade(grade) {
-        console.log('Edit grade:', grade);
-        // TODO: Implement edit modal
-    }
-
-    function deleteGrade(gradeId, assessmentName) {
-        if (confirm(`Are you sure you want to delete "${assessmentName}"?`)) {
-            const formData = new FormData();
-            formData.append('action', 'delete_grade');
-            formData.append('grade_id', gradeId);
-
-            fetch('functions/grade_functions.php', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showAlert('success', 'Success!', data.message);
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showAlert('error', 'Error', data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showAlert('error', 'Connection Error', 'Unable to connect to server.');
-                });
-        }
-    }
-
-    // Search functionality
-    document.getElementById('searchGrades').addEventListener('input', function () {
-        const searchTerm = this.value.toLowerCase();
-        const gradeCards = document.querySelectorAll('.grade-card');
-
-        gradeCards.forEach(card => {
-            const text = card.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
-            }
-        });
-    });
-
     // Close modals with Escape key
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
+            const gradingModal = document.getElementById('gradingSheetModal');
+            const addGradeModal = document.getElementById('addGradeModal');
+
+            if (!gradingModal.classList.contains('hidden')) {
+                gradingModal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                currentStudentId = null;
+                currentStudentName = '';
+            }
+
             if (!addGradeModal.classList.contains('hidden')) {
                 closeAddGradeModal();
-            }
-            if (!addAnecdotalModal.classList.contains('hidden')) {
-                closeAddAnecdotalModal();
             }
         }
     });
 
     // Close modals when clicking outside
-    addGradeModal.addEventListener('click', function (e) {
-        if (e.target === addGradeModal) {
+    document.getElementById('gradingSheetModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            currentStudentId = null;
+            currentStudentName = '';
+        }
+    });
+
+    document.getElementById('addGradeModal').addEventListener('click', function (e) {
+        if (e.target === this) {
             closeAddGradeModal();
         }
     });
 
-    addAnecdotalModal.addEventListener('click', function (e) {
-        if (e.target === addAnecdotalModal) {
-            closeAddAnecdotalModal();
-        }
-    });
+    // Auto-refresh statistics every 30 seconds
+    setInterval(function () {
+        fetch('functions/grade_functions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=get_statistics'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update statistics without full page reload
+                    const stats = data.data;
+                    document.querySelectorAll('.text-lg.font-bold.text-gray-900')[1].textContent = (stats.avg_percentage || 0) + '%';
+                }
+            })
+            .catch(error => console.log('Stats update failed:', error));
+    }, 30000);
 </script>
 
 <?php include "../includes/footer.php" ?>
