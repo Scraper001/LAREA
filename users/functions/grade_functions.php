@@ -795,6 +795,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
 
+        case 'export_grades_csv':
+            $report_data = generateGradeReport(
+                $_POST['student_id'] ?? null,
+                $_POST['subject'] ?? null,
+                $_POST['grading_period'] ?? null
+            );
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="grade_report_' . date('Y-m-d') . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($output, [
+                'LRN', 'Student Name', 'Grade Level', 'Course', 'Subject', 
+                'Assessment Type', 'Assessment Name', 'Score', 'Max Points', 
+                'Percentage', 'Grade Category', 'Pass/Fail', 'Grading Period', 
+                'Remarks', 'Date Recorded'
+            ]);
+            
+            // CSV Data
+            foreach ($report_data as $row) {
+                fputcsv($output, [
+                    $row['LRN'],
+                    $row['student_name'],
+                    $row['GLevel'],
+                    $row['Course'],
+                    $row['subject'],
+                    $row['assessment_type'],
+                    $row['assessment_name'],
+                    $row['grade_value'],
+                    $row['max_points'],
+                    $row['percentage'] . '%',
+                    $row['grade_category'],
+                    $row['pass_fail_status'],
+                    $row['grading_period'],
+                    $row['remarks'],
+                    $row['date_recorded']
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
             break;

@@ -327,16 +327,15 @@ $students = getAllStudents();
 
     // Export grade report function
     function exportGradeReport(studentId) {
-        // Create form for report generation
+        // Create form for CSV export
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = 'functions/grade_functions.php';
-        form.target = '_blank';
 
         const actionInput = document.createElement('input');
         actionInput.type = 'hidden';
         actionInput.name = 'action';
-        actionInput.value = 'generate_report';
+        actionInput.value = 'export_grades_csv';
 
         const studentIdInput = document.createElement('input');
         studentIdInput.type = 'hidden';
