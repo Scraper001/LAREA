@@ -1,155 +1,233 @@
 <?php
-function getAttendanceSettings()
-{
-    global $conn;
-    $query = "SELECT * FROM attendance_settings ORDER BY id DESC LIMIT 1";
-    $result = $conn->query($query);
-    return $result->fetch_assoc();
-}
+// Include database connection
+require_once('../connection/conn.php');
 
+/**
+ * Get today's attendance statistics
+ */
 function getAttendanceStats($date = null)
 {
-    global $conn;
-
-    if (!$date) {
-        $date = date('Y-m-d');
-    }
+    $conn = conn();
+    $date = $date ?? date('Y-m-d');
 
     $query = "SELECT 
-                COUNT(*) as total_students,
-                SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
-                SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-                SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
-              FROM attendance a
-              RIGHT JOIN users u ON a.student_id = u.id
-              WHERE u.user_type = 'student' AND (a.date = ? OR a.date IS NULL)";
+        SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_count,
+        SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_count,
+        SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late_count,
+        SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused_count,
+        COUNT(*) as total_records
+        FROM attendance 
+        WHERE date = ?";
 
     $stmt = $conn->prepare($query);
     $stmt->bind_param("s", $date);
     $stmt->execute();
     $result = $stmt->get_result();
-    return $result->fetch_assoc();
+    $stats = $result->fetch_assoc();
+
+    // If no records for today, initialize with zeros
+    if (!$stats || !isset($stats['total_records']) || $stats['total_records'] == 0) {
+        $stats = [
+            'present_count' => 0,
+            'absent_count' => 0,
+            'late_count' => 0,
+            'excused_count' => 0,
+            'total_records' => 0
+        ];
+    }
+
+    return $stats;
 }
 
-function getStudentsForAttendance($search = '', $grade_level = '', $date = null)
+/**
+ * Simple attendance recording function
+ */
+function recordAttendance($student_id, $date, $status, $time_in = null, $time_out = null, $remarks = null, $recorded_by = null)
 {
-    global $conn;
+    $conn = conn();
 
-    if (!$date) {
-        $date = date('Y-m-d');
-    }
+    // Check if attendance already exists for this student on this date
+    $check_query = "SELECT id FROM attendance WHERE student_id = ? AND date = ?";
+    $check_stmt = $conn->prepare($check_query);
+    $check_stmt->bind_param("is", $student_id, $date);
+    $check_stmt->execute();
+    $result = $check_stmt->get_result();
 
-    $query = "SELECT u.id, u.Fname, u.Lname, u.Mname, u.GLevel, u.photo_path,
-                     a.status, a.time_in, a.time_out, a.remarks
-              FROM users u
-              LEFT JOIN attendance a ON u.id = a.student_id AND a.date = ?
-              WHERE u.user_type = 'student'";
+    if ($result->num_rows > 0) {
+        // Update existing record
+        $row = $result->fetch_assoc();
+        $id = $row['id'];
 
-    $params = [$date];
-    $types = "s";
+        $update_query = "UPDATE attendance SET status = ?, time_in = ?, time_out = ?, remarks = ? WHERE id = ?";
+        $update_stmt = $conn->prepare($update_query);
+        $update_stmt->bind_param("ssssi", $status, $time_in, $time_out, $remarks, $id);
 
-    if (!empty($search)) {
-        $query .= " AND (u.Fname LIKE ? OR u.Lname LIKE ? OR u.Mname LIKE ?)";
-        $searchTerm = "%$search%";
-        $params[] = $searchTerm;
-        $params[] = $searchTerm;
-        $params[] = $searchTerm;
-        $types .= "sss";
-    }
-
-    if (!empty($grade_level)) {
-        $query .= " AND u.GLevel = ?";
-        $params[] = $grade_level;
-        $types .= "s";
-    }
-
-    $query .= " ORDER BY u.GLevel, u.Lname, u.Fname";
-
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    return $stmt->get_result();
-}
-
-function markAttendance($student_id, $date, $status, $time_in = null, $time_out = null, $remarks = '', $recorded_by = null)
-{
-    global $conn;
-
-    // Get attendance settings
-    $settings = getAttendanceSettings();
-
-    // Auto-determine if late based on time_in
-    if ($time_in && $status == 'present') {
-        $school_start = $settings['school_start_time'];
-        $late_threshold = $settings['late_threshold_minutes'];
-
-        $start_time = new DateTime($school_start);
-        $check_time = new DateTime($time_in);
-        $late_time = clone $start_time;
-        $late_time->add(new DateInterval('PT' . $late_threshold . 'M'));
-
-        if ($check_time > $late_time) {
-            $status = 'late';
-        }
-    }
-
-    $query = "INSERT INTO attendance (student_id, date, status, time_in, time_out, remarks, recorded_by)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-              ON DUPLICATE KEY UPDATE
-              status = VALUES(status),
-              time_in = VALUES(time_in),
-              time_out = VALUES(time_out),
-              remarks = VALUES(remarks),
-              recorded_by = VALUES(recorded_by),
-              updated_at = CURRENT_TIMESTAMP";
-
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("isssssi", $student_id, $date, $status, $time_in, $time_out, $remarks, $recorded_by);
-
-    return $stmt->execute();
-}
-
-function bulkMarkAttendance($attendanceData, $date, $recorded_by = null)
-{
-    global $conn;
-
-    $conn->begin_transaction();
-
-    try {
-        foreach ($attendanceData as $data) {
-            $result = markAttendance(
-                $data['student_id'],
-                $date,
-                $data['status'],
-                $data['time_in'] ?? null,
-                $data['time_out'] ?? null,
-                $data['remarks'] ?? '',
-                $recorded_by
-            );
-
-            if (!$result) {
-                throw new Exception("Failed to mark attendance for student ID: " . $data['student_id']);
+        if ($update_stmt->execute()) {
+            // Update hours worked if both time_in and time_out are set
+            if ($time_in && $time_out) {
+                $hours_query = "UPDATE attendance SET hours_worked = TIMESTAMPDIFF(MINUTE, time_in, time_out)/60 WHERE id = ?";
+                $hours_stmt = $conn->prepare($hours_query);
+                $hours_stmt->bind_param("i", $id);
+                $hours_stmt->execute();
             }
-        }
 
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
-        return false;
+            return ['success' => true, 'message' => 'Attendance updated successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Error updating attendance: ' . $conn->error];
+        }
+    } else {
+        // Insert new record
+        $insert_query = "INSERT INTO attendance (student_id, date, status, time_in, time_out, remarks, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $insert_stmt = $conn->prepare($insert_query);
+        $insert_stmt->bind_param("isssssi", $student_id, $date, $status, $time_in, $time_out, $remarks, $recorded_by);
+
+        if ($insert_stmt->execute()) {
+            $last_id = $conn->insert_id;
+
+            // Update hours worked if both time_in and time_out are set
+            if ($time_in && $time_out) {
+                $hours_query = "UPDATE attendance SET hours_worked = TIMESTAMPDIFF(MINUTE, time_in, time_out)/60 WHERE id = ?";
+                $hours_stmt = $conn->prepare($hours_query);
+                $hours_stmt->bind_param("i", $last_id);
+                $hours_stmt->execute();
+            }
+
+            return ['success' => true, 'message' => 'Attendance recorded successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Error recording attendance: ' . $conn->error];
+        }
     }
 }
 
-function getGradeLevels()
+/**
+ * Get students without attendance records for a specific date
+ */
+function getStudentsWithoutAttendance($date = null)
 {
-    global $conn;
-    $query = "SELECT DISTINCT GLevel FROM users WHERE user_type = 'student' ORDER BY GLevel";
+    $conn = conn();
+    $date = $date ?? date('Y-m-d');
+
+    $query = "SELECT s.* FROM students_tbl s
+              LEFT JOIN attendance a ON s.id = a.student_id AND a.date = ?
+              WHERE a.id IS NULL
+              ORDER BY s.Lname, s.Fname";
+
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    return $result;
+}
+
+/**
+ * Get students with attendance records for a specific date
+ */
+function getStudentsWithAttendance($date = null)
+{
+    $conn = conn();
+    $date = $date ?? date('Y-m-d');
+
+    $query = "SELECT s.*, a.id as attendance_id, a.status, a.time_in, a.time_out, 
+              a.hours_worked, a.remarks
+              FROM students_tbl s
+              JOIN attendance a ON s.id = a.student_id 
+              WHERE a.date = ?
+              ORDER BY s.Lname, s.Fname";
+
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    return $result;
+}
+
+/**
+ * Get attendance settings
+ */
+function getAttendanceSettings()
+{
+    $conn = conn();
+
+    $query = "SELECT * FROM attendance_settings ORDER BY id LIMIT 1";
     $result = $conn->query($query);
-    $levels = [];
-    while ($row = $result->fetch_assoc()) {
-        $levels[] = $row['GLevel'];
+
+    if ($result->num_rows > 0) {
+        return $result->fetch_assoc();
     }
-    return $levels;
+
+    // Return default settings if none found
+    return [
+        'school_start_time' => '08:00:00',
+        'school_end_time' => '17:00:00',
+        'late_threshold_minutes' => 15,
+        'grace_period_minutes' => 5,
+        'lunch_start_time' => '12:00:00',
+        'lunch_end_time' => '13:00:00'
+    ];
+}
+
+/**
+ * Search students by name or LRN
+ */
+function searchStudents($search_term)
+{
+    $conn = conn();
+
+    $search_term = "%$search_term%";
+
+    $query = "SELECT * FROM students_tbl 
+              WHERE Fname LIKE ? OR Lname LIKE ? OR Mname LIKE ? OR LRN LIKE ?
+              ORDER BY Lname, Fname";
+
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ssss", $search_term, $search_term, $search_term, $search_term);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    return $result;
+}
+
+/**
+ * Get a specific attendance record
+ */
+function getAttendanceById($id)
+{
+    $conn = conn();
+
+    $query = "SELECT a.*, s.Fname, s.Lname, s.Mname, s.GLevel, s.LRN, s.photo_path
+              FROM attendance a
+              JOIN students_tbl s ON a.student_id = s.id
+              WHERE a.id = ?";
+
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+
+    return null;
+}
+
+/**
+ * Delete an attendance record
+ */
+function deleteAttendance($id)
+{
+    $conn = conn();
+
+    $query = "DELETE FROM attendance WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $id);
+
+    if ($stmt->execute()) {
+        return ['success' => true, 'message' => 'Attendance record deleted successfully'];
+    } else {
+        return ['success' => false, 'message' => 'Error deleting attendance record: ' . $conn->error];
+    }
 }
 ?>

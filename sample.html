@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ugly Light UI with Sidebar</title>
+    <style>
+      body {
+        background-color: white;
+        color: black;
+        font-family: "Comic Sans MS", cursive, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+      }
+
+      .sidebar {
+        width: 180px;
+        background-color: white;
+        border-right: 3px double black;
+        padding: 10px;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+
+      .sidebar h3 {
+        font-size: 18px;
+        text-align: center;
+        border-bottom: 1px solid black;
+      }
+
+      .sidebar ul {
+        list-style-type: square;
+        padding-left: 10px;
+      }
+
+      .sidebar ul li {
+        margin: 10px 0;
+      }
+
+      .sidebar ul li a {
+        text-decoration: none;
+        color: black;
+        font-size: 14px;
+      }
+
+      .main-content {
+        flex: 1;
+        padding: 15px;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 40px;
+        letter-spacing: 5px;
+        border: 1px solid black;
+        padding: 10px;
+      }
+
+      nav {
+        text-align: center;
+        margin: 10px 0;
+        padding: 5px;
+        border: 1px dashed black;
+      }
+
+      nav a {
+        color: black;
+        text-decoration: none;
+        margin: 0 15px;
+      }
+
+      .content {
+        border: 1px solid black;
+        padding: 10px;
+        margin-top: 10px;
+      }
+
+      form {
+        margin-top: 20px;
+      }
+
+      input {
+        width: 90%;
+        padding: 5px;
+        margin-bottom: 10px;
+        border: 1px solid black;
+      }
+
+      button {
+        background: white;
+        border: 1px solid black;
+        padding: 5px 15px;
+        cursor: pointer;
+      }
+
+      footer {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 12px;
+        border-top: 1px solid black;
+        padding-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h3>SIDE MENU</h3>
+      <ul>
+        <li><a href="#">Dashboard</a></li>
+        <li><a href="#">Profile</a></li>
+        <li><a href="#">Settings</a></li>
+        <li><a href="#">Logout</a></li>
+      </ul>
+    </div>
+
+    <div class="main-content">
+      <h1>WELCOME TO MY WEBSITE</h1>
+      <nav>
+        <a href="#">Home</a> | <a href="#">About</a> |
+        <a href="#">Contact</a>
+      </nav>
+
+      <div class="content">
+        <h2>ABOUT THIS SITE</h2>
+        <p>
+          This is a poorly designed website with a light theme and an awkward
+          sidebar.
+        </p>
+
+        <form>
+          <label>Enter your name</label><br />
+          <input type="text" /><br />
+          <label>Your email</label><br />
+          <input type="email" /><br />
+          <button>SUBMIT</button>
+        </form>
+      </div>
+
+      <footer>
+        <p>© 2025 Ugly Site Inc.</p>
+      </footer>
+    </div>
+  </body>
+</html>
