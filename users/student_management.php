@@ -84,6 +84,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <!-- Action Buttons -->
                         <div class="flex space-x-2">
                             <button
+                                onclick="window.location.href='student_grades.php?student_id=<?php echo $row['id']; ?>'"
+                                class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200">
+                                <i class="fa-solid fa-star mr-1"></i>
+                                Grades
+                            </button>
+
+                            <button
                                 onclick="openEditModal(<?php echo $row['id']; ?>, '<?php echo addslashes($row['Fname']); ?>', '<?php echo addslashes($row['Lname']); ?>', '<?php echo addslashes($row['Mname']); ?>', '<?php echo addslashes($row['LRN']); ?>', '<?php echo addslashes($row['GLevel']); ?>', '<?php echo addslashes($row['Course']); ?>', '<?php echo addslashes($row['photo_path']); ?>')"
                                 class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200">
                                 <i class="fa-solid fa-edit mr-1"></i>
