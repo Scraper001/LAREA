@@ -60,6 +60,56 @@ $absent_count = mysqli_fetch_assoc($absent_result)['absent_total'];
 
         </section>
 
+        <!-- Quick Navigation -->
+        <section class="mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Quick Access</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Grades Management -->
+                <a href="grades.php" class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-star text-blue-600 text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 text-sm">Grade Management</h3>
+                        <p class="text-xs text-gray-500 mt-1">Add & manage student grades</p>
+                    </div>
+                </a>
+
+                <!-- Student Grades -->
+                <a href="student_grades.php" class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-chart-line text-green-600 text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 text-sm">Student Grades</h3>
+                        <p class="text-xs text-gray-500 mt-1">View grade summaries</p>
+                    </div>
+                </a>
+
+                <!-- Student Management -->
+                <a href="student_management.php" class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-graduation-cap text-purple-600 text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 text-sm">Students</h3>
+                        <p class="text-xs text-gray-500 mt-1">Manage student records</p>
+                    </div>
+                </a>
+
+                <!-- Attendance -->
+                <a href="attendance.php" class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col items-center text-center">
+                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-clipboard-user text-orange-600 text-xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 text-sm">Attendance</h3>
+                        <p class="text-xs text-gray-500 mt-1">Track student attendance</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
         <!-- Chart and Table -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 
