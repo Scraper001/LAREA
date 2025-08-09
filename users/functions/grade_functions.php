@@ -43,7 +43,7 @@ function addGrade($student_id, $lrn, $subject, $assessment_type, $assessment_nam
 
     $stmt = mysqli_prepare($conn, $sql);
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "iissssdss", $student_id, $lrn, $subject, $assessment_type, $assessment_name, $grade_value, $max_points, $grading_period, $remarks, $teacher_notes);
+        mysqli_stmt_bind_param($stmt, "iisssddsss", $student_id, $lrn, $subject, $assessment_type, $assessment_name, $grade_value, $max_points, $grading_period, $remarks, $teacher_notes);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
@@ -211,7 +211,7 @@ function addAnecdotalRecord($student_id, $lrn, $record_type, $observation_title,
 
     $stmt = mysqli_prepare($conn, $sql);
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "iissssss", $student_id, $lrn, $record_type, $observation_title, $observation_details, $severity_level, $follow_up_required, $follow_up_notes);
+        mysqli_stmt_bind_param($stmt, "iissssis", $student_id, $lrn, $record_type, $observation_title, $observation_details, $severity_level, $follow_up_required, $follow_up_notes);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
@@ -310,6 +310,382 @@ function searchGrades($search_term)
     return $grades;
 }
 
+// Function to get grade statistics for a student
+function getStudentGradeStatistics($student_id)
+{
+    $conn = conn();
+
+    $sql = "SELECT 
+                COUNT(grade_id) as total_assessments,
+                AVG(percentage) as average_percentage,
+                MIN(percentage) as lowest_grade,
+                MAX(percentage) as highest_grade,
+                SUM(CASE WHEN pass_fail_status = 'Pass' THEN 1 ELSE 0 END) as passed_assessments,
+                SUM(CASE WHEN pass_fail_status = 'Fail' THEN 1 ELSE 0 END) as failed_assessments,
+                SUM(CASE WHEN grade_category = 'Excellent' THEN 1 ELSE 0 END) as excellent_grades,
+                SUM(CASE WHEN grade_category = 'Very Good' THEN 1 ELSE 0 END) as very_good_grades,
+                SUM(CASE WHEN grade_category = 'Good' THEN 1 ELSE 0 END) as good_grades,
+                SUM(CASE WHEN grade_category = 'Satisfactory' THEN 1 ELSE 0 END) as satisfactory_grades,
+                SUM(CASE WHEN grade_category = 'Needs Improvement' THEN 1 ELSE 0 END) as needs_improvement_grades,
+                SUM(CASE WHEN grade_category = 'Failed' THEN 1 ELSE 0 END) as failed_grades
+            FROM grades_tbl 
+            WHERE student_id = ?";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $student_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $stats = [];
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+        $stats = $row;
+        $stats['pass_rate'] = $stats['total_assessments'] > 0 ? 
+            round(($stats['passed_assessments'] / $stats['total_assessments']) * 100, 2) : 0;
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($conn);
+    return $stats;
+}
+
+// Function to get class performance statistics
+function getClassPerformanceStatistics($subject = null, $grading_period = null)
+{
+    $conn = conn();
+
+    $where_conditions = [];
+    $params = [];
+    $types = "";
+
+    if ($subject) {
+        $where_conditions[] = "subject = ?";
+        $params[] = $subject;
+        $types .= "s";
+    }
+
+    if ($grading_period) {
+        $where_conditions[] = "grading_period = ?";
+        $params[] = $grading_period;
+        $types .= "s";
+    }
+
+    $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+
+    $sql = "SELECT 
+                subject,
+                grading_period,
+                COUNT(DISTINCT student_id) as total_students,
+                AVG(percentage) as class_average,
+                MIN(percentage) as lowest_grade,
+                MAX(percentage) as highest_grade,
+                COUNT(CASE WHEN pass_fail_status = 'Pass' THEN 1 END) as students_passed,
+                COUNT(CASE WHEN pass_fail_status = 'Fail' THEN 1 END) as students_failed,
+                (COUNT(CASE WHEN pass_fail_status = 'Pass' THEN 1 END) / COUNT(DISTINCT student_id)) * 100 as pass_rate
+            FROM grades_tbl 
+            $where_clause
+            GROUP BY subject, grading_period
+            ORDER BY subject, grading_period";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $stats = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $stats[] = $row;
+        }
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($conn);
+    return $stats;
+}
+
+// Function to get grade distribution data for charts
+function getGradeDistribution($student_id = null, $subject = null, $grading_period = null)
+{
+    $conn = conn();
+
+    $where_conditions = [];
+    $params = [];
+    $types = "";
+
+    if ($student_id) {
+        $where_conditions[] = "student_id = ?";
+        $params[] = $student_id;
+        $types .= "i";
+    }
+
+    if ($subject) {
+        $where_conditions[] = "subject = ?";
+        $params[] = $subject;
+        $types .= "s";
+    }
+
+    if ($grading_period) {
+        $where_conditions[] = "grading_period = ?";
+        $params[] = $grading_period;
+        $types .= "s";
+    }
+
+    $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+
+    $sql = "SELECT 
+                grade_category,
+                COUNT(*) as count,
+                ROUND(AVG(percentage), 2) as avg_percentage
+            FROM grades_tbl 
+            $where_clause
+            GROUP BY grade_category
+            ORDER BY 
+                CASE grade_category
+                    WHEN 'Excellent' THEN 1
+                    WHEN 'Very Good' THEN 2
+                    WHEN 'Good' THEN 3
+                    WHEN 'Satisfactory' THEN 4
+                    WHEN 'Needs Improvement' THEN 5
+                    WHEN 'Failed' THEN 6
+                END";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $distribution = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $distribution[] = $row;
+        }
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($conn);
+    return $distribution;
+}
+
+// Function to get grade improvement trends
+function getGradeImprovementTrends($student_id)
+{
+    $conn = conn();
+
+    $sql = "SELECT 
+                subject,
+                grading_period,
+                new_percentage,
+                improvement,
+                date_changed
+            FROM grade_history_tbl 
+            WHERE student_id = ? AND action_type IN ('CREATED', 'UPDATED')
+            ORDER BY subject, date_changed";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $student_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $trends = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $trends[] = $row;
+        }
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($conn);
+    return $trends;
+}
+
+// Function to add multiple grades at once (bulk entry)
+function addBulkGrades($grades_data)
+{
+    $conn = conn();
+    $success_count = 0;
+    $errors = [];
+
+    // Begin transaction
+    mysqli_begin_transaction($conn);
+
+    try {
+        $sql = "INSERT INTO grades_tbl (student_id, LRN, subject, assessment_type, assessment_name, grade_value, max_points, grading_period, remarks, teacher_notes) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $stmt = mysqli_prepare($conn, $sql);
+
+        foreach ($grades_data as $index => $grade) {
+            // Validate each grade entry
+            if (empty($grade['student_id']) || empty($grade['lrn']) || empty($grade['subject']) || 
+                empty($grade['assessment_name']) || empty($grade['grade_value']) || empty($grade['max_points'])) {
+                $errors[] = "Row " . ($index + 1) . ": Missing required fields";
+                continue;
+            }
+
+            if (!is_numeric($grade['grade_value']) || !is_numeric($grade['max_points'])) {
+                $errors[] = "Row " . ($index + 1) . ": Grade value and max points must be numbers";
+                continue;
+            }
+
+            mysqli_stmt_bind_param($stmt, "iisssddsss", 
+                $grade['student_id'], $grade['lrn'], $grade['subject'], 
+                $grade['assessment_type'], $grade['assessment_name'], 
+                $grade['grade_value'], $grade['max_points'], 
+                $grade['grading_period'], $grade['remarks'] ?? '', 
+                $grade['teacher_notes'] ?? ''
+            );
+
+            if (mysqli_stmt_execute($stmt)) {
+                $success_count++;
+            } else {
+                $errors[] = "Row " . ($index + 1) . ": Database error - " . mysqli_error($conn);
+            }
+        }
+
+        mysqli_stmt_close($stmt);
+
+        if (empty($errors)) {
+            mysqli_commit($conn);
+            mysqli_close($conn);
+            return ['success' => true, 'message' => "$success_count grades added successfully!"];
+        } else {
+            mysqli_rollback($conn);
+            mysqli_close($conn);
+            return ['success' => false, 'message' => 'Some grades failed to add', 'errors' => $errors, 'success_count' => $success_count];
+        }
+
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        mysqli_close($conn);
+        return ['success' => false, 'message' => 'Transaction failed: ' . $e->getMessage()];
+    }
+}
+
+// Function to generate grade report data
+function generateGradeReport($student_id = null, $subject = null, $grading_period = null, $format = 'array')
+{
+    $conn = conn();
+
+    $where_conditions = [];
+    $params = [];
+    $types = "";
+
+    if ($student_id) {
+        $where_conditions[] = "g.student_id = ?";
+        $params[] = $student_id;
+        $types .= "i";
+    }
+
+    if ($subject) {
+        $where_conditions[] = "g.subject = ?";
+        $params[] = $subject;
+        $types .= "s";
+    }
+
+    if ($grading_period) {
+        $where_conditions[] = "g.grading_period = ?";
+        $params[] = $grading_period;
+        $types .= "s";
+    }
+
+    $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+
+    $sql = "SELECT 
+                s.LRN,
+                CONCAT(s.Fname, ' ', s.Lname) as student_name,
+                s.GLevel,
+                s.Course,
+                g.subject,
+                g.assessment_type,
+                g.assessment_name,
+                g.grade_value,
+                g.max_points,
+                g.percentage,
+                g.grade_category,
+                g.pass_fail_status,
+                g.grading_period,
+                g.remarks,
+                g.date_recorded
+            FROM grades_tbl g 
+            JOIN students_tbl s ON g.student_id = s.id 
+            $where_clause
+            ORDER BY s.Lname, s.Fname, g.subject, g.grading_period, g.date_recorded";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $report_data = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $report_data[] = $row;
+        }
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($conn);
+
+    return $report_data;
+}
+
+// Function to get grade settings
+function getGradeSettings()
+{
+    $conn = conn();
+
+    $sql = "SELECT setting_name, setting_value FROM grade_settings_tbl";
+    $result = mysqli_query($conn, $sql);
+
+    $settings = [];
+    if ($result && mysqli_num_rows($result) > 0) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $settings[$row['setting_name']] = $row['setting_value'];
+        }
+    }
+
+    mysqli_close($conn);
+    return $settings;
+}
+
+// Function to update grade settings
+function updateGradeSetting($setting_name, $setting_value)
+{
+    $conn = conn();
+
+    $sql = "UPDATE grade_settings_tbl SET setting_value = ? WHERE setting_name = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ss", $setting_value, $setting_name);
+        
+        if (mysqli_stmt_execute($stmt)) {
+            mysqli_stmt_close($stmt);
+            mysqli_close($conn);
+            return ['success' => true, 'message' => 'Setting updated successfully!'];
+        } else {
+            mysqli_stmt_close($stmt);
+            mysqli_close($conn);
+            return ['success' => false, 'message' => 'Failed to update setting.'];
+        }
+    } else {
+        mysqli_close($conn);
+        return ['success' => false, 'message' => 'Database preparation error.'];
+    }
+}
+
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -364,6 +740,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['follow_up_required'] ?? 0,
                 $_POST['follow_up_notes'] ?? ''
             );
+            echo json_encode($result);
+            break;
+
+        case 'get_student_statistics':
+            $result = getStudentGradeStatistics($_POST['student_id']);
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'get_class_performance':
+            $result = getClassPerformanceStatistics(
+                $_POST['subject'] ?? null,
+                $_POST['grading_period'] ?? null
+            );
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'get_grade_distribution':
+            $result = getGradeDistribution(
+                $_POST['student_id'] ?? null,
+                $_POST['subject'] ?? null,
+                $_POST['grading_period'] ?? null
+            );
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'get_improvement_trends':
+            $result = getGradeImprovementTrends($_POST['student_id']);
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'add_bulk_grades':
+            $grades_data = json_decode($_POST['grades_data'], true);
+            $result = addBulkGrades($grades_data);
+            echo json_encode($result);
+            break;
+
+        case 'generate_report':
+            $result = generateGradeReport(
+                $_POST['student_id'] ?? null,
+                $_POST['subject'] ?? null,
+                $_POST['grading_period'] ?? null
+            );
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'get_grade_settings':
+            $result = getGradeSettings();
+            echo json_encode(['success' => true, 'data' => $result]);
+            break;
+
+        case 'update_grade_setting':
+            $result = updateGradeSetting($_POST['setting_name'], $_POST['setting_value']);
             echo json_encode($result);
             break;
 
