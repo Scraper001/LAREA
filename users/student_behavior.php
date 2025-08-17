@@ -23,6 +23,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200">
                     <i class="fa-solid fa-filter"></i>
                 </button>
+                <button id="reportButton"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                    <i class="fa-solid fa-chart-bar mr-1"></i>
+                    Report
+                </button>
             </div>
             <div class="relative mb-4">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -56,18 +61,97 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             </div>
                         </div>
                         <div class="mb-3">
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                                <?php echo $row['behavior_type'] ?>
-                            </span>
+                            <!-- Behavior Type and Category Badges -->
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium 
+                                    <?php 
+                                    echo match($row['behavior_type']) {
+                                        'Commendable' => 'bg-green-100 text-green-800 border border-green-200',
+                                        'Needs Improvement' => 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+                                        'Violation' => 'bg-red-100 text-red-800 border border-red-200',
+                                        default => 'bg-gray-100 text-gray-800 border border-gray-200'
+                                    };
+                                    ?>">
+                                    <?php echo $row['behavior_type'] ?>
+                                </span>
+                                
+                                <?php if (!empty($row['behavior_category'])): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                    <?php echo $row['behavior_category'] ?>
+                                </span>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($row['severity_level'])): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium
+                                    <?php 
+                                    echo match($row['severity_level']) {
+                                        'Low' => 'bg-green-50 text-green-700 border border-green-200',
+                                        'Medium' => 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+                                        'High' => 'bg-orange-50 text-orange-700 border border-orange-200',
+                                        'Critical' => 'bg-red-50 text-red-700 border border-red-200',
+                                        default => 'bg-gray-50 text-gray-700 border border-gray-200'
+                                    };
+                                    ?>">
+                                    <i class="fa-solid fa-exclamation-triangle mr-1"></i>
+                                    <?php echo $row['severity_level'] ?>
+                                </span>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($row['status']) && $row['status'] !== 'Active'): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium
+                                    <?php 
+                                    echo match($row['status']) {
+                                        'Resolved' => 'bg-green-50 text-green-700 border border-green-200',
+                                        'Follow-up Required' => 'bg-orange-50 text-orange-700 border border-orange-200',
+                                        'Archived' => 'bg-gray-50 text-gray-700 border border-gray-200',
+                                        default => 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    };
+                                    ?>">
+                                    <i class="fa-solid fa-info-circle mr-1"></i>
+                                    <?php echo $row['status'] ?>
+                                </span>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($row['follow_up_required']) && $row['follow_up_required'] == 1): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                    <i class="fa-solid fa-bell mr-1"></i>
+                                    Follow-up Required
+                                </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="mb-2">
                             <p class="text-sm text-gray-700">
-                                <strong>Date:</strong> <?php echo $row['behavior_date'] ?>
+                                <strong>Date:</strong> <?php echo date('M d, Y', strtotime($row['date_entry'])) ?>
+                                <?php if (!empty($row['updated_at']) && $row['updated_at'] !== $row['date_entry']): ?>
+                                    <span class="text-xs text-gray-500 ml-2">
+                                        (Updated: <?php echo date('M d, Y', strtotime($row['updated_at'])) ?>)
+                                    </span>
+                                <?php endif; ?>
                             </p>
+                            
+                            <?php if (!empty($row['remarks'])): ?>
                             <p class="text-sm text-gray-700 mt-1">
-                                <strong>Remarks:</strong> <?php echo $row['remarks'] ?>
+                                <strong>Remarks:</strong> <?php echo htmlspecialchars($row['remarks']) ?>
                             </p>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($row['follow_up_notes'])): ?>
+                            <p class="text-sm text-gray-700 mt-1">
+                                <strong>Follow-up Notes:</strong> <?php echo htmlspecialchars($row['follow_up_notes']) ?>
+                            </p>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($row['GLevel']) || !empty($row['Course'])): ?>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <?php if (!empty($row['GLevel'])): ?>
+                                    <span class="mr-3">Grade: <?php echo $row['GLevel'] ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($row['Course']) && $row['Course'] !== 'N/A'): ?>
+                                    <span>Course: <?php echo $row['Course'] ?></span>
+                                <?php endif; ?>
+                            </p>
+                            <?php endif; ?>
                         </div>
                         <div class="flex space-x-2">
                             <button
@@ -154,6 +238,40 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </select>
                 </div>
                 <div>
+                    <label for="addBehaviorCategory" class="block text-sm font-medium text-gray-700 mb-1">
+                        Behavior Category <span class="text-red-500">*</span>
+                    </label>
+                    <select id="addBehaviorCategory" name="behaviorCategory" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Category</option>
+                        <option value="Academic Excellence">Academic Excellence</option>
+                        <option value="Leadership">Leadership</option>
+                        <option value="Participation">Participation</option>
+                        <option value="Respect">Respect</option>
+                        <option value="Punctuality">Punctuality</option>
+                        <option value="Tardiness">Tardiness</option>
+                        <option value="Disruptive Behavior">Disruptive Behavior</option>
+                        <option value="Academic Concerns">Academic Concerns</option>
+                        <option value="Violation of Rules">Violation of Rules</option>
+                        <option value="Attendance Issues">Attendance Issues</option>
+                        <option value="General Observation">General Observation</option>
+                        <option value="Follow-up Required">Follow-up Required</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="addSeverityLevel" class="block text-sm font-medium text-gray-700 mb-1">
+                        Severity Level <span class="text-red-500">*</span>
+                    </label>
+                    <select id="addSeverityLevel" name="severityLevel" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Severity</option>
+                        <option value="Low">Low - Minor observation</option>
+                        <option value="Medium">Medium - Requires attention</option>
+                        <option value="High">High - Serious concern</option>
+                        <option value="Critical">Critical - Immediate action required</option>
+                    </select>
+                </div>
+                <div>
                     <label for="addBehaviorDate" class="block text-sm font-medium text-gray-700 mb-1">
                         Date <span class="text-red-500">*</span>
                     </label>
@@ -164,9 +282,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <label for="addBehaviorRemarks" class="block text-sm font-medium text-gray-700 mb-1">
                         Remarks
                     </label>
-                    <textarea id="addBehaviorRemarks" name="behaviorRemarks"
+                    <textarea id="addBehaviorRemarks" name="behaviorRemarks" rows="3"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter remarks"></textarea>
+                        placeholder="Enter detailed behavior observation..."></textarea>
+                </div>
+                <div>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="addFollowUpRequired" name="followUpRequired"
+                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-700">Requires Follow-up</span>
+                    </label>
+                </div>
+                <div id="addFollowUpNotes" class="hidden">
+                    <label for="addFollowUpNotesText" class="block text-sm font-medium text-gray-700 mb-1">
+                        Follow-up Notes
+                    </label>
+                    <textarea id="addFollowUpNotesText" name="followUpNotes" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter follow-up instructions or notes..."></textarea>
                 </div>
                 <div class="flex space-x-3 pt-4">
                     <button type="button" id="cancelAddBehaviorModal"
@@ -216,6 +349,40 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </select>
                 </div>
                 <div>
+                    <label for="editBehaviorCategory" class="block text-sm font-medium text-gray-700 mb-1">
+                        Behavior Category <span class="text-red-500">*</span>
+                    </label>
+                    <select id="editBehaviorCategory" name="behaviorCategory" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Category</option>
+                        <option value="Academic Excellence">Academic Excellence</option>
+                        <option value="Leadership">Leadership</option>
+                        <option value="Participation">Participation</option>
+                        <option value="Respect">Respect</option>
+                        <option value="Punctuality">Punctuality</option>
+                        <option value="Tardiness">Tardiness</option>
+                        <option value="Disruptive Behavior">Disruptive Behavior</option>
+                        <option value="Academic Concerns">Academic Concerns</option>
+                        <option value="Violation of Rules">Violation of Rules</option>
+                        <option value="Attendance Issues">Attendance Issues</option>
+                        <option value="General Observation">General Observation</option>
+                        <option value="Follow-up Required">Follow-up Required</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="editSeverityLevel" class="block text-sm font-medium text-gray-700 mb-1">
+                        Severity Level <span class="text-red-500">*</span>
+                    </label>
+                    <select id="editSeverityLevel" name="severityLevel" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Severity</option>
+                        <option value="Low">Low - Minor observation</option>
+                        <option value="Medium">Medium - Requires attention</option>
+                        <option value="High">High - Serious concern</option>
+                        <option value="Critical">Critical - Immediate action required</option>
+                    </select>
+                </div>
+                <div>
                     <label for="editBehaviorDate" class="block text-sm font-medium text-gray-700 mb-1">
                         Date <span class="text-red-500">*</span>
                     </label>
@@ -226,9 +393,36 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <label for="editBehaviorRemarks" class="block text-sm font-medium text-gray-700 mb-1">
                         Remarks
                     </label>
-                    <textarea id="editBehaviorRemarks" name="behaviorRemarks"
+                    <textarea id="editBehaviorRemarks" name="behaviorRemarks" rows="3"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter remarks"></textarea>
+                        placeholder="Enter detailed behavior observation..."></textarea>
+                </div>
+                <div>
+                    <label for="editStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                        Status
+                    </label>
+                    <select id="editStatus" name="status"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Active">Active</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Follow-up Required">Follow-up Required</option>
+                        <option value="Archived">Archived</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="editFollowUpRequired" name="followUpRequired"
+                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-700">Requires Follow-up</span>
+                    </label>
+                </div>
+                <div id="editFollowUpNotes" class="hidden">
+                    <label for="editFollowUpNotesText" class="block text-sm font-medium text-gray-700 mb-1">
+                        Follow-up Notes
+                    </label>
+                    <textarea id="editFollowUpNotesText" name="followUpNotes" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter follow-up instructions or notes..."></textarea>
                 </div>
                 <div class="flex space-x-3 pt-4">
                     <button type="button" id="cancelEditBehaviorModal"
@@ -262,6 +456,150 @@ $current_page = basename($_SERVER['PHP_SELF']);
             animation: slide-in 0.3s ease-out;
         }
     </style>
+
+    <!-- Filter Modal -->
+    <div id="filterModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Filter Behavior Records</h3>
+                <button id="closeFilterModal" type="button" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="filterForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="filterBehaviorType" class="block text-sm font-medium text-gray-700 mb-1">
+                            Behavior Type
+                        </label>
+                        <select id="filterBehaviorType" name="behaviorType"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Types</option>
+                            <option value="Commendable">Commendable</option>
+                            <option value="Needs Improvement">Needs Improvement</option>
+                            <option value="Violation">Violation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterCategory" class="block text-sm font-medium text-gray-700 mb-1">
+                            Category
+                        </label>
+                        <select id="filterCategory" name="category"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Categories</option>
+                            <option value="Academic Excellence">Academic Excellence</option>
+                            <option value="Leadership">Leadership</option>
+                            <option value="Participation">Participation</option>
+                            <option value="Respect">Respect</option>
+                            <option value="Punctuality">Punctuality</option>
+                            <option value="Tardiness">Tardiness</option>
+                            <option value="Disruptive Behavior">Disruptive Behavior</option>
+                            <option value="Academic Concerns">Academic Concerns</option>
+                            <option value="Violation of Rules">Violation of Rules</option>
+                            <option value="Attendance Issues">Attendance Issues</option>
+                            <option value="General Observation">General Observation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterSeverity" class="block text-sm font-medium text-gray-700 mb-1">
+                            Severity Level
+                        </label>
+                        <select id="filterSeverity" name="severity"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Severities</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                            Status
+                        </label>
+                        <select id="filterStatus" name="status"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="Active">Active</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Follow-up Required">Follow-up Required</option>
+                            <option value="Archived">Archived</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterDateFrom" class="block text-sm font-medium text-gray-700 mb-1">
+                            Date From
+                        </label>
+                        <input type="date" id="filterDateFrom" name="dateFrom"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="filterDateTo" class="block text-sm font-medium text-gray-700 mb-1">
+                            Date To
+                        </label>
+                        <input type="date" id="filterDateTo" name="dateTo"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" id="clearFilters"
+                        class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                        Clear Filters
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                        <i class="fa-solid fa-filter mr-1"></i>
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Behavior Summary Report</h3>
+                <button id="closeReportModal" type="button" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label for="reportDateFrom" class="block text-sm font-medium text-gray-700 mb-1">
+                            Report Period From
+                        </label>
+                        <input type="date" id="reportDateFrom" name="reportDateFrom"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="reportDateTo" class="block text-sm font-medium text-gray-700 mb-1">
+                            Report Period To
+                        </label>
+                        <input type="date" id="reportDateTo" name="reportDateTo"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-end">
+                        <button id="generateReport" type="button"
+                            class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500">
+                            <i class="fa-solid fa-chart-bar mr-1"></i>
+                            Generate Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="reportContent" class="min-h-64 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fa-solid fa-chart-bar text-4xl mb-4"></i>
+                    <p>Click "Generate Report" to view behavior statistics</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </main>
 
@@ -397,8 +735,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             const formData = new FormData(this);
             const lrn = formData.get('behaviorLRN');
             const type = formData.get('behaviorType');
+            const category = formData.get('behaviorCategory');
+            const severity = formData.get('severityLevel');
             const date = formData.get('behaviorDate');
-            if (!lrn || !type || !date) {
+            
+            if (!lrn || !type || !category || !severity || !date) {
                 showAlert('error', 'Validation Error', 'Please fill in all required fields.');
                 return;
             }
@@ -406,10 +747,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 showAlert('error', 'Invalid LRN', 'LRN must be exactly 12 digits.');
                 return;
             }
+            
             const submitButton = this.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Adding...';
             submitButton.disabled = true;
+            
             fetch('functions/add_behavior.php', {
                 method: 'POST',
                 body: formData
@@ -442,8 +785,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             const formData = new FormData(this);
             const lrn = formData.get('behaviorLRN');
             const type = formData.get('behaviorType');
+            const category = formData.get('behaviorCategory');
+            const severity = formData.get('severityLevel');
             const date = formData.get('behaviorDate');
-            if (!lrn || !type || !date) {
+            
+            if (!lrn || !type || !category || !severity || !date) {
                 showAlert('error', 'Validation Error', 'Please fill in all required fields.');
                 return;
             }
@@ -451,10 +797,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 showAlert('error', 'Invalid LRN', 'LRN must be exactly 12 digits.');
                 return;
             }
+            
             const submitButton = this.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Updating...';
             submitButton.disabled = true;
+            
             fetch('functions/edit_behavior.php', {
                 method: 'POST',
                 body: formData
@@ -482,9 +830,125 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     // Filter button functionality
     const filterButton = document.getElementById('filterButton');
+    const filterModal = document.getElementById('filterModal');
+    const closeFilterModal = document.getElementById('closeFilterModal');
+    const filterForm = document.getElementById('filterForm');
+    const clearFilters = document.getElementById('clearFilters');
+    
     if (filterButton) {
         filterButton.addEventListener('click', function () {
-            console.log('Filter clicked');
+            if (filterModal) {
+                filterModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    }
+    
+    if (closeFilterModal) {
+        closeFilterModal.addEventListener('click', function() {
+            filterModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    if (clearFilters) {
+        clearFilters.addEventListener('click', function() {
+            filterForm.reset();
+            // Apply empty filters (show all records)
+            console.log('Filters cleared');
+        });
+    }
+    
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Apply filters logic here
+            console.log('Filters applied');
+            filterModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    // Report button functionality
+    const reportButton = document.getElementById('reportButton');
+    const reportModal = document.getElementById('reportModal');
+    const closeReportModal = document.getElementById('closeReportModal');
+    const generateReport = document.getElementById('generateReport');
+    const reportContent = document.getElementById('reportContent');
+    
+    if (reportButton) {
+        reportButton.addEventListener('click', function () {
+            if (reportModal) {
+                reportModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                
+                // Set default dates (last 30 days)
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+                
+                document.getElementById('reportDateTo').value = today.toISOString().split('T')[0];
+                document.getElementById('reportDateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (closeReportModal) {
+        closeReportModal.addEventListener('click', function() {
+            reportModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    if (generateReport) {
+        generateReport.addEventListener('click', function() {
+            const dateFrom = document.getElementById('reportDateFrom').value;
+            const dateTo = document.getElementById('reportDateTo').value;
+            
+            if (!dateFrom || !dateTo) {
+                showAlert('error', 'Date Required', 'Please select both start and end dates for the report.');
+                return;
+            }
+            
+            // Generate sample report
+            const sampleReportData = [
+                {category: 'Positive Behaviors', count: 45, percentage: 60},
+                {category: 'Needs Improvement', count: 20, percentage: 27},
+                {category: 'Violations', count: 10, percentage: 13}
+            ];
+            
+            let reportHTML = `
+                <h4 class="text-lg font-semibold mb-4">Behavior Report: ${dateFrom} to ${dateTo}</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            `;
+            
+            sampleReportData.forEach(item => {
+                const colorClass = item.category === 'Positive Behaviors' ? 'bg-green-100 text-green-800' :
+                                 item.category === 'Needs Improvement' ? 'bg-yellow-100 text-yellow-800' :
+                                 'bg-red-100 text-red-800';
+                
+                reportHTML += `
+                    <div class="bg-white rounded-lg border p-4 text-center">
+                        <div class="text-3xl font-bold ${colorClass.split(' ')[1]}">${item.count}</div>
+                        <div class="text-sm font-medium text-gray-600 mt-1">${item.category}</div>
+                        <div class="text-xs text-gray-500">${item.percentage}% of total</div>
+                    </div>
+                `;
+            });
+            
+            reportHTML += `
+                </div>
+                <div class="bg-white rounded-lg border p-4">
+                    <h5 class="font-semibold mb-3">Summary</h5>
+                    <ul class="space-y-2 text-sm text-gray-700">
+                        <li>• Total behavior records: 75</li>
+                        <li>• Students with positive behavior: 35</li>
+                        <li>• Students requiring follow-up: 8</li>
+                        <li>• Critical incidents: 2</li>
+                    </ul>
+                </div>
+            `;
+            
+            reportContent.innerHTML = reportHTML;
         });
     }
 
@@ -530,6 +994,41 @@ $current_page = basename($_SERVER['PHP_SELF']);
             }
             e.target.value = value;
         });
+    }
+    
+    // Follow-up required toggle for Add Modal
+    const addFollowUpCheckbox = document.getElementById('addFollowUpRequired');
+    const addFollowUpNotesDiv = document.getElementById('addFollowUpNotes');
+    if (addFollowUpCheckbox && addFollowUpNotesDiv) {
+        addFollowUpCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                addFollowUpNotesDiv.classList.remove('hidden');
+            } else {
+                addFollowUpNotesDiv.classList.add('hidden');
+                document.getElementById('addFollowUpNotesText').value = '';
+            }
+        });
+    }
+    
+    // Follow-up required toggle for Edit Modal
+    const editFollowUpCheckbox = document.getElementById('editFollowUpRequired');
+    const editFollowUpNotesDiv = document.getElementById('editFollowUpNotes');
+    if (editFollowUpCheckbox && editFollowUpNotesDiv) {
+        editFollowUpCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                editFollowUpNotesDiv.classList.remove('hidden');
+            } else {
+                editFollowUpNotesDiv.classList.add('hidden');
+                document.getElementById('editFollowUpNotesText').value = '';
+            }
+        });
+    }
+    
+    // Set today's date as default for add form
+    const addDateInput = document.getElementById('addBehaviorDate');
+    if (addDateInput && !addDateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        addDateInput.value = today;
     }
 
     // Delete confirmation modal HTML
