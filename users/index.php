@@ -1,4 +1,7 @@
 <?php
+include "../includes/session_manager.php";
+requireTeacher(); // Ensure only teachers/staff can access this page
+
 $current_page = basename($_SERVER['PHP_SELF']);
 include "../connection/conn.php";
 $conn = conn();

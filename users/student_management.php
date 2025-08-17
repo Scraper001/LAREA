@@ -1,4 +1,13 @@
 <?php
+include "../includes/session_manager.php";
+requireLogin(); // Ensure user is logged in
+
+// Only allow teachers and admins to access student management
+if (!isTeacher() && !isAdmin()) {
+    header("Location: unauthorized.php");
+    exit();
+}
+
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 
