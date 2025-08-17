@@ -19,9 +19,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
         if (password_verify($password, $row['password_col'])) {
+            // Set session variables for role-based access
+            $_SESSION['user_id'] = $row['id'];
+            $_SESSION['userID'] = $row['userID_col'];
+            $_SESSION['user_level'] = $row['userLevel_col'];
+            $_SESSION['logged_in'] = true;
+            
+            // Determine redirect URL based on user level
+            $redirect_url = '../users/index.php'; // Default for teachers (level 1)
+            if ($row['userLevel_col'] == 2) {
+                $redirect_url = '../users/admin_dashboard.php'; // Admin
+            } elseif ($row['userLevel_col'] == 3) {
+                $redirect_url = '../users/parent_dashboard.php'; // Parent
+            }
+            
             echo json_encode([
                 'status' => 'success',
-                'message' => 'Login Complete.'
+                'message' => 'Login Complete.',
+                'redirect_url' => $redirect_url,
+                'user_level' => $row['userLevel_col']
             ]);
         } else {
             echo json_encode([

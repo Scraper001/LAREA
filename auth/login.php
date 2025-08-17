@@ -91,7 +91,9 @@
                             }
                         }).then((result) => {
                             if (result.dismiss === Swal.DismissReason.timer) {
-                                window.location.href = "../users/index.php";
+                                // Use redirect URL from response or default
+                                const redirectUrl = response.redirect_url || "../users/index.php";
+                                window.location.href = redirectUrl;
                             }
                         });
                     } else {
