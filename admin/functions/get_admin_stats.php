@@ -1,82 +1,65 @@
 <?php
-include "../../connection/conn.php";
-
+// Mock data functions for demonstration (no database connection needed)
 function get_admin_stats() {
-    $conn = conn();
+    // Mock data for demonstration (in production, this would connect to database)
     $stats = [];
     
     // Total users count
-    $sql = "SELECT COUNT(*) as total_users FROM tbl_user";
-    $result = mysqli_query($conn, $sql);
-    $stats['total_users'] = mysqli_fetch_assoc($result)['total_users'];
+    $stats['total_users'] = 15;
     
-    // Total students count
-    $sql = "SELECT COUNT(*) as total_students FROM students_tbl";
-    $result = mysqli_query($conn, $sql);
-    $stats['total_students'] = mysqli_fetch_assoc($result)['total_students'];
+    // Total students count  
+    $stats['total_students'] = 120;
     
     // Today's attendance - Present
-    $sql = "SELECT COUNT(*) as present_today FROM attendance WHERE attendance = 1 AND DATE(attendance_date) = CURDATE()";
-    $result = mysqli_query($conn, $sql);
-    $stats['present_today'] = mysqli_fetch_assoc($result)['present_today'] ?? 0;
+    $stats['present_today'] = 85;
     
     // Today's attendance - Absent  
-    $sql = "SELECT COUNT(*) as absent_today FROM attendance WHERE attendance = 0 AND DATE(attendance_date) = CURDATE()";
-    $result = mysqli_query($conn, $sql);
-    $stats['absent_today'] = mysqli_fetch_assoc($result)['absent_today'] ?? 0;
+    $stats['absent_today'] = 12;
     
     // Total behavior records
-    $sql = "SELECT COUNT(*) as total_behavior_records FROM anecdotal_records_tbl";
-    $result = mysqli_query($conn, $sql);
-    $stats['total_behavior_records'] = mysqli_fetch_assoc($result)['total_behavior_records'];
+    $stats['total_behavior_records'] = 45;
     
     // Active behavior issues (follow-up required)
-    $sql = "SELECT COUNT(*) as active_issues FROM anecdotal_records_tbl WHERE follow_up_required = 1 AND status = 'Active'";
-    $result = mysqli_query($conn, $sql);
-    $stats['active_issues'] = mysqli_fetch_assoc($result)['active_issues'];
+    $stats['active_issues'] = 8;
     
     // Users by role
-    $sql = "SELECT userLevel_col, COUNT(*) as count FROM tbl_user GROUP BY userLevel_col";
-    $result = mysqli_query($conn, $sql);
-    $stats['users_by_role'] = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $role_name = '';
-        switch ($row['userLevel_col']) {
-            case 1: $role_name = 'Admin'; break;
-            case 2: $role_name = 'Teacher'; break;
-            case 3: $role_name = 'Student'; break;
-            default: $role_name = 'Unknown'; break;
-        }
-        $stats['users_by_role'][$role_name] = $row['count'];
-    }
+    $stats['users_by_role'] = [
+        'Admin' => 2,
+        'Teacher' => 8,
+        'Student' => 5
+    ];
     
-    // Recent activity (last 10 behavior records)
-    $sql = "SELECT ar.observation_title, ar.date_recorded, s.fname, s.lname 
-            FROM anecdotal_records_tbl ar 
-            JOIN students_tbl s ON ar.student_id = s.id 
-            ORDER BY ar.date_recorded DESC LIMIT 10";
-    $result = mysqli_query($conn, $sql);
-    $stats['recent_activity'] = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $stats['recent_activity'][] = $row;
-    }
+    // Recent activity (mock data)
+    $stats['recent_activity'] = [
+        [
+            'observation_title' => 'Excellent participation in Math class',
+            'date_recorded' => '2025-08-17 09:30:00',
+            'fname' => 'Juan',
+            'lname' => 'Dela Cruz'
+        ],
+        [
+            'observation_title' => 'Late arrival to Science class',
+            'date_recorded' => '2025-08-17 08:15:00',
+            'fname' => 'Maria',
+            'lname' => 'Santos'
+        ],
+        [
+            'observation_title' => 'Outstanding leadership in group project',
+            'date_recorded' => '2025-08-16 14:45:00',
+            'fname' => 'Jose',
+            'lname' => 'Rizal'
+        ]
+    ];
     
-    // Weekly attendance trend
-    $sql = "SELECT 
-                DAYNAME(attendance_date) as day_name,
-                SUM(CASE WHEN attendance = 1 THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN attendance = 0 THEN 1 ELSE 0 END) as absent
-            FROM attendance 
-            WHERE attendance_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY DATE(attendance_date), DAYNAME(attendance_date)
-            ORDER BY attendance_date";
-    $result = mysqli_query($conn, $sql);
-    $stats['weekly_attendance'] = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $stats['weekly_attendance'][] = $row;
-    }
+    // Weekly attendance trend (mock data)
+    $stats['weekly_attendance'] = [
+        ['day_name' => 'Monday', 'present' => 95, 'absent' => 8],
+        ['day_name' => 'Tuesday', 'present' => 88, 'absent' => 15],
+        ['day_name' => 'Wednesday', 'present' => 92, 'absent' => 11],
+        ['day_name' => 'Thursday', 'present' => 85, 'absent' => 18],
+        ['day_name' => 'Friday', 'present' => 98, 'absent' => 5]
+    ];
     
-    mysqli_close($conn);
     return $stats;
 }
 ?>

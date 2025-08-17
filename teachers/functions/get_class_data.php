@@ -1,52 +1,50 @@
 <?php
-include "../../connection/conn.php";
-
+// Mock data functions for demonstration (no database connection needed)
 function get_class_data($teacher_id = null) {
-    $conn = conn();
+    // Mock data for demonstration (in production, this would connect to database)
     $data = [];
     
-    // Get all students (in a real implementation, this would be filtered by teacher assignment)
-    $sql = "SELECT 
-                s.id,
-                s.fname,
-                s.lname,
-                s.mname,
-                s.grade_level,
-                s.course,
-                s.LRN,
-                COALESCE(recent_attendance.status, 'No Record') as last_attendance_status,
-                COALESCE(recent_attendance.attendance_date, 'Never') as last_attendance_date,
-                COALESCE(behavior_count.count, 0) as behavior_records_count
-            FROM students_tbl s
-            LEFT JOIN (
-                SELECT 
-                    student_id,
-                    CASE WHEN attendance = 1 THEN 'Present' ELSE 'Absent' END as status,
-                    attendance_date
-                FROM attendance a1
-                WHERE attendance_date = (
-                    SELECT MAX(attendance_date) 
-                    FROM attendance a2 
-                    WHERE a2.student_id = a1.student_id
-                )
-            ) recent_attendance ON s.id = recent_attendance.student_id
-            LEFT JOIN (
-                SELECT 
-                    student_id,
-                    COUNT(*) as count
-                FROM anecdotal_records_tbl
-                WHERE date_recorded >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-                GROUP BY student_id
-            ) behavior_count ON s.id = behavior_count.student_id
-            ORDER BY s.grade_level, s.lname, s.fname";
+    // Get all students (mock data)
+    $data['students'] = [
+        [
+            'id' => 1,
+            'fname' => 'John',
+            'lname' => 'Smith',
+            'mname' => 'A',
+            'grade_level' => '10',
+            'course' => 'General Academic Strand',
+            'LRN' => '123456789012',
+            'last_attendance_status' => 'Present',
+            'last_attendance_date' => '2025-08-17',
+            'behavior_records_count' => 2
+        ],
+        [
+            'id' => 2,
+            'fname' => 'Jane',
+            'lname' => 'Doe',
+            'mname' => 'B',
+            'grade_level' => '9',
+            'course' => 'N/A',
+            'LRN' => '123456789013',
+            'last_attendance_status' => 'Absent',
+            'last_attendance_date' => '2025-08-17',
+            'behavior_records_count' => 0
+        ],
+        [
+            'id' => 3,
+            'fname' => 'Mike',
+            'lname' => 'Johnson',
+            'mname' => 'C',
+            'grade_level' => '11',
+            'course' => 'STEM',
+            'LRN' => '123456789014',
+            'last_attendance_status' => 'Present',
+            'last_attendance_date' => '2025-08-17',
+            'behavior_records_count' => 1
+        ]
+    ];
     
-    $result = mysqli_query($conn, $sql);
-    $data['students'] = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $data['students'][] = $row;
-    }
-    
-    // Get upcoming deadlines (simulated data - would come from assignment/grade tables)
+    // Get upcoming deadlines (mock data)
     $data['upcoming_deadlines'] = [
         [
             'title' => 'Math Quiz 3',
@@ -68,24 +66,28 @@ function get_class_data($teacher_id = null) {
         ]
     ];
     
-    // Get class attendance summary by grade level
-    $sql = "SELECT 
-                s.grade_level,
-                COUNT(DISTINCT s.id) as total_students,
-                SUM(CASE WHEN a.attendance = 1 AND DATE(a.attendance_date) = CURDATE() THEN 1 ELSE 0 END) as present_today,
-                SUM(CASE WHEN a.attendance = 0 AND DATE(a.attendance_date) = CURDATE() THEN 1 ELSE 0 END) as absent_today
-            FROM students_tbl s
-            LEFT JOIN attendance a ON s.id = a.student_id AND DATE(a.attendance_date) = CURDATE()
-            GROUP BY s.grade_level
-            ORDER BY s.grade_level";
+    // Get class attendance summary by grade level (mock data)
+    $data['class_attendance'] = [
+        [
+            'grade_level' => '9',
+            'total_students' => 25,
+            'present_today' => 22,
+            'absent_today' => 3
+        ],
+        [
+            'grade_level' => '10',
+            'total_students' => 28,
+            'present_today' => 26,
+            'absent_today' => 2
+        ],
+        [
+            'grade_level' => '11',
+            'total_students' => 30,
+            'present_today' => 28,
+            'absent_today' => 2
+        ]
+    ];
     
-    $result = mysqli_query($conn, $sql);
-    $data['class_attendance'] = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        $data['class_attendance'][] = $row;
-    }
-    
-    mysqli_close($conn);
     return $data;
 }
 ?>

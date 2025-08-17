@@ -10,15 +10,15 @@
             </div>
             <div class="flex-1 flex items-center justify-center sm:items-stretch sm:justify-start">
                 <div class="flex-shrink-0">
-                    <a href="/LAREA/admin/dashboard.php" class="text-xl font-bold text-blue-600">LAREA Admin</a>
+                    <a href="dashboard.php" class="text-xl font-bold text-blue-600">LAREA Admin</a>
                 </div>
                 <div class="hidden sm:block sm:ml-6">
                     <div class="flex space-x-4">
-                        <a href="/LAREA/admin/dashboard.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                        <a href="/LAREA/users/student_management.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Student Management</a>
-                        <a href="/LAREA/users/student_behavior.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Behavior Records</a>
-                        <a href="/LAREA/users/attendance.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Attendance</a>
-                        <a href="/LAREA/users/grades.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Grades</a>
+                        <a href="dashboard.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                        <a href="../users/student_management.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Student Management</a>
+                        <a href="../users/student_behavior.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Behavior Records</a>
+                        <a href="../users/attendance.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Attendance</a>
+                        <a href="../users/grades.php" class="text-gray-900 hover:bg-gray-100 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Grades</a>
                     </div>
                 </div>
             </div>
@@ -26,7 +26,7 @@
                 <div class="ml-3 relative">
                     <div class="flex items-center">
                         <span class="text-gray-700 text-sm mr-4">Welcome, Admin</span>
-                        <a href="/LAREA/includes/logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">Logout</a>
+                        <a href="../includes/logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">Logout</a>
                     </div>
                 </div>
             </div>

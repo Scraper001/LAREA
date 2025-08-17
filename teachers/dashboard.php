@@ -199,19 +199,19 @@ $class_data = get_class_data();
             <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <h3 class="text-lg font-bold text-gray-700 mb-4">Quick Actions</h3>
                 <div class="grid grid-cols-2 gap-4">
-                    <a href="/LAREA/users/attendance.php" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                    <a href="../users/attendance.php" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
                         <i class="fa-solid fa-clipboard-check text-green-600 text-2xl mb-2"></i>
                         <span class="text-sm font-medium text-green-700">Take Attendance</span>
                     </a>
-                    <a href="/LAREA/users/student_behavior.php" class="flex flex-col items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
+                    <a href="../users/student_behavior.php" class="flex flex-col items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
                         <i class="fa-solid fa-exclamation-circle text-yellow-600 text-2xl mb-2"></i>
                         <span class="text-sm font-medium text-yellow-700">Behavior Report</span>
                     </a>
-                    <a href="/LAREA/users/grades.php" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                    <a href="../users/grades.php" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
                         <i class="fa-solid fa-chart-bar text-purple-600 text-2xl mb-2"></i>
                         <span class="text-sm font-medium text-purple-700">Enter Grades</span>
                     </a>
-                    <a href="/LAREA/users/student_management.php" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                    <a href="../users/student_management.php" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                         <i class="fa-solid fa-users text-blue-600 text-2xl mb-2"></i>
                         <span class="text-sm font-medium text-blue-700">My Students</span>
                     </a>
